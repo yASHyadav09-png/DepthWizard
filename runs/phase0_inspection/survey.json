@@ -1,0 +1,242 @@
+{
+  "subset": "phase0",
+  "n_tiles": {
+    "train": 40,
+    "val": 10
+  },
+  "formats": {
+    "DC/rgb": [
+      {
+        "suffix": "RGB.h5",
+        "dtype": "uint8",
+        "shape": [
+          1024,
+          1024,
+          3
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "DC/ndsm": [
+      {
+        "suffix": "AGL.h5",
+        "dtype": "float32",
+        "shape": [
+          1024,
+          1024
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "DC/cls": [
+      {
+        "suffix": "CLS.h5",
+        "dtype": "float32",
+        "shape": [
+          1024,
+          1024
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "NYC/rgb": [
+      {
+        "suffix": "IMG.h5",
+        "dtype": "uint8",
+        "shape": [
+          1024,
+          1024,
+          3
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "NYC/ndsm": [
+      {
+        "suffix": "AGL.h5",
+        "dtype": "float32",
+        "shape": [
+          1024,
+          1024
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "NYC/cls": [
+      {
+        "suffix": "CLS.h5",
+        "dtype": "uint8",
+        "shape": [
+          1024,
+          1024
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "PHL/rgb": [
+      {
+        "suffix": "RGB.h5",
+        "dtype": "uint8",
+        "shape": [
+          1024,
+          1024,
+          3
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "PHL/ndsm": [
+      {
+        "suffix": "AGL.h5",
+        "dtype": "float32",
+        "shape": [
+          1024,
+          1024
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ],
+    "PHL/cls": [
+      {
+        "suffix": "CLS.h5",
+        "dtype": "uint8",
+        "shape": [
+          1024,
+          1024
+        ],
+        "keys": [
+          "image"
+        ],
+        "attrs": "{}",
+        "nonfinite": 0
+      }
+    ]
+  },
+  "ndsm_global": {
+    "min": -5.0,
+    "max": 202.84237670898438,
+    "any_negative": true,
+    "any_invalid": true,
+    "mean_frac_exact_zero": 0.1520570182800293
+  },
+  "cls_non_integer_tiles": 0,
+  "per_class_height_m": {
+    "others": {
+      "n_sampled": 48295,
+      "mean": 0.6274102226265358,
+      "median": 0.03657683730125427,
+      "p5": -5.0,
+      "p95": 5.148071765899658,
+      "frac_gt_2m": 0.15237602236256342
+    },
+    "ground": {
+      "n_sampled": 162038,
+      "mean": 0.2575172702135936,
+      "median": 0.006793901789933443,
+      "p5": 0.0,
+      "p95": 1.258635753393172,
+      "frac_gt_2m": 0.03052370431627149
+    },
+    "low_vegetation": {
+      "n_sampled": 186960,
+      "mean": 0.3513925910901514,
+      "median": 0.016851814463734627,
+      "p5": 0.0,
+      "p95": 2.0547226309776234,
+      "frac_gt_2m": 0.05233739837398374
+    },
+    "building": {
+      "n_sampled": 174707,
+      "mean": 8.62669774997837,
+      "median": 7.2634124755859375,
+      "p5": 1.2563136816024782,
+      "p95": 21.907589721679685,
+      "frac_gt_2m": 0.9350455333787427
+    },
+    "water": {
+      "n_sampled": 53753,
+      "mean": -0.661494536226926,
+      "median": 0.0,
+      "p5": -5.0,
+      "p95": 0.2911709308624255,
+      "frac_gt_2m": 0.005022975461834688
+    },
+    "road": {
+      "n_sampled": 157192,
+      "mean": 0.9803148439971402,
+      "median": 0.007621367694810033,
+      "p5": 0.0,
+      "p95": 7.173185467720025,
+      "frac_gt_2m": 0.09555829813222047
+    },
+    "tree": {
+      "n_sampled": 217055,
+      "mean": 10.463328665034181,
+      "median": 8.479535102844238,
+      "p5": 0.044406272098422066,
+      "p95": 25.967929649353025,
+      "frac_gt_2m": 0.8576213402133099
+    }
+  },
+  "per_city": {
+    "DC": {
+      "ndsm_mean": 6.052,
+      "ndsm_p99": 27.102,
+      "ndsm_max": 35.691,
+      "frac_zero": 0.318,
+      "rgb_mean": 96.18,
+      "frac_building": 0.193,
+      "frac_tree": 0.271
+    },
+    "NYC": {
+      "ndsm_mean": 5.008,
+      "ndsm_p99": 22.458,
+      "ndsm_max": 29.451,
+      "frac_zero": 0.054,
+      "rgb_mean": 115.158,
+      "frac_building": 0.16,
+      "frac_tree": 0.292
+    },
+    "PHL": {
+      "ndsm_mean": 2.399,
+      "ndsm_p99": 14.943,
+      "ndsm_max": 46.223,
+      "frac_zero": 0.081,
+      "rgb_mean": 115.513,
+      "frac_building": 0.168,
+      "frac_tree": 0.156
+    }
+  }
+}

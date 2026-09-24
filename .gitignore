@@ -1,0 +1,57 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# --- Model weights & caches (never commit) ---
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.ckpt
+.cache/
+hf_cache/
+/models/
+checkpoints/
+
+# --- Generated pipeline artefacts ---
+backend/outputs/
+outputs/
+*.npy
+!sample_data/**/*.npy
+
+# --- Datasets (GAMUS, SRTM, LiDAR - future stages) ---
+data/
+datasets/
+*.tif
+*.tiff
+*.laz
+*.las
+
+# --- Node / frontend ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# --- ML experiments: keep configs/metrics/figures, never weights ---
+runs/**/checkpoints/
+
+# smoke-test runs are pipeline checks, not results
+runs/*_smoke/

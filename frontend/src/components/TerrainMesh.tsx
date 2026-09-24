@@ -1,0 +1,169 @@
+import { useEffect, useMemo, useRef } from 'react'
+import * as THREE from 'three'
+import { useTexture } from '@react-three/drei'
+import type { TerrainGrid, ViewMode } from '../types'
+import { decodeHeights } from '../services/terrain'
+
+/** Elevation ramp used for the "elevation" view mode (low -> high). */
+const RAMP: [number, [number, number, number]][] = [
+  [0.0, [0.10, 0.16, 0.36]],
+  [0.2, [0.11, 0.38, 0.52]],
+  [0.4, [0.13, 0.55, 0.42]],
+  [0.6, [0.62, 0.73, 0.31]],
+  [0.8, [0.86, 0.62, 0.32]],
+  [1.0, [0.98, 0.98, 0.98]],
+]
+
+function rampColor(t: number, out: [number, number, number]) {
+  const value = Math.min(1, Math.max(0, t))
+  let i = 1
+  while (i < RAMP.length - 1 && value > RAMP[i][0]) i += 1
+  const [t0, c0] = RAMP[i - 1]
+  const [t1, c1] = RAMP[i]
+  const f = t1 === t0 ? 0 : (value - t0) / (t1 - t0)
+  out[0] = c0[0] + (c1[0] - c0[0]) * f
+  out[1] = c0[1] + (c1[1] - c0[1]) * f
+  out[2] = c0[2] + (c1[2] - c0[2]) * f
+}
+
+interface BuiltGeometry {
+  geometry: THREE.BufferGeometry
+  baseHeights: Float32Array
+}
+
+/**
+ * Build the terrain surface by hand rather than displacing a PlaneGeometry:
+ * it keeps the UV orientation, the winding and the height lookup in one place.
+ *
+ * Grid row 0 is the TOP of the source image. It is placed at -Z and given
+ * v = 1 so the RGB texture (loaded with flipY) lands the right way up.
+ */
+function buildGeometry(grid: TerrainGrid): BuiltGeometry {
+  const { width: w, height: h, plane_width: pw, plane_depth: pd } = grid
+  const heights = decodeHeights(grid)
+
+  const count = w * h
+  const positions = new Float32Array(count * 3)
+  const uvs = new Float32Array(count * 2)
+  const colors = new Float32Array(count * 3)
+  const rgb: [number, number, number] = [0, 0, 0]
+
+  for (let j = 0; j < h; j += 1) {
+    const v = h === 1 ? 0 : j / (h - 1)
+    for (let i = 0; i < w; i += 1) {
+      const u = w === 1 ? 0 : i / (w - 1)
+      const index = j * w + i
+
+      positions[index * 3] = (u - 0.5) * pw
+      positions[index * 3 + 1] = heights[index]
+      positions[index * 3 + 2] = (v - 0.5) * pd
+
+      uvs[index * 2] = u
+      uvs[index * 2 + 1] = 1 - v
+
+      rampColor(heights[index], rgb)
+      colors[index * 3] = rgb[0]
+      colors[index * 3 + 1] = rgb[1]
+      colors[index * 3 + 2] = rgb[2]
+    }
+  }
+
+  // Two triangles per cell, wound so the surface normal points up (+Y).
+  const quads = (w - 1) * (h - 1)
+  const indices =
+    count > 65535 ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6)
+  let k = 0
+  for (let j = 0; j < h - 1; j += 1) {
+    for (let i = 0; i < w - 1; i += 1) {
+      const a = j * w + i
+      const b = a + 1
+      const c = a + w
+      const d = c + 1
+      indices[k++] = a
+      indices[k++] = c
+      indices[k++] = b
+      indices[k++] = b
+      indices[k++] = c
+      indices[k++] = d
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1))
+  geometry.computeVertexNormals()
+
+  return { geometry, baseHeights: heights }
+}
+
+export function TerrainMesh({
+  grid,
+  textureUrl,
+  viewMode,
+  wireframe,
+  exaggeration,
+}: {
+  grid: TerrainGrid
+  textureUrl: string
+  viewMode: ViewMode
+  wireframe: boolean
+  exaggeration: number
+}) {
+  const texture = useTexture(textureUrl)
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  const { geometry, baseHeights } = useMemo(() => buildGeometry(grid), [grid])
+
+  // Dispose the previous surface when a new job is loaded.
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  useEffect(() => {
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 8
+    texture.needsUpdate = true
+  }, [texture])
+
+  // Re-displace instead of scaling the mesh: scaling would leave the normals
+  // (and therefore the shading) wrong at high exaggeration.
+  useEffect(() => {
+    const position = geometry.getAttribute('position') as THREE.BufferAttribute
+    const array = position.array as Float32Array
+    for (let i = 0; i < baseHeights.length; i += 1) {
+      array[i * 3 + 1] = baseHeights[i] * exaggeration
+    }
+    position.needsUpdate = true
+    geometry.computeVertexNormals()
+    geometry.computeBoundingSphere()
+  }, [geometry, baseHeights, exaggeration])
+
+  const textured = viewMode === 'textured'
+
+  return (
+    <group>
+      <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow>
+        <meshStandardMaterial
+          map={textured ? texture : null}
+          vertexColors={!textured}
+          roughness={textured ? 0.82 : 0.7}
+          metalness={0.02}
+          side={THREE.DoubleSide}
+          flatShading={false}
+        />
+      </mesh>
+
+      {wireframe && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial
+            color="#38bdf8"
+            wireframe
+            transparent
+            opacity={0.12}
+            depthTest
+          />
+        </mesh>
+      )}
+    </group>
+  )
+}

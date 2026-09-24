@@ -1,0 +1,16 @@
+# DepthWizard ML environment (Python 3.11)
+# Install PyTorch first, matching the GPU (RTX 50xx needs CUDA 12.8+ builds):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+transformers>=4.45,<5
+huggingface-hub
+hf_xet
+h5py
+numpy
+scipy
+matplotlib
+pyyaml
+pandas
+tqdm
+rasterio
+pytest
+scikit-learn
