@@ -15,7 +15,11 @@ def test_freezing_and_counts():
     m.train()
     assert not m.net.backbone.training and m.net.head.training
     m.set_trainable("partial", unfreeze_last_blocks=4)
-    assert m.param_counts()["trainable"] > 2_728_513
+    assert m.param_counts()["trainable"] == 2_728_513 + 7_100_928      # decoder + blocks 8-11
+    enc = {n.split(".")[4] for n, p in m.named_parameters() if p.requires_grad and n.startswith("net.backbone")}
+    assert enc == {"8", "9", "10", "11"}
+    assert not any(p.requires_grad for p in m.net.backbone.layernorm.parameters())
+    assert not any(p.requires_grad for p in m.net.backbone.embeddings.parameters())
 
 
 def test_predict_tile_pads_and_crops_back():

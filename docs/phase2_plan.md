@@ -18,8 +18,17 @@ Approved 2026-09-25 with modifications 1–8 below. Phase 1 commit (source of al
 
 - 2a trains the DPT neck (2,700,768) + head (27,745) = **2,728,513** parameters. The DINOv2-S
   encoder (**22,056,576**) is frozen and kept in eval mode.
-- 2b (if approved later) additionally trains the last 4 of 12 encoder blocks plus the final
-  backbone LayerNorm.
+- 2b (approved 2026-09-26, config `configs/phase2b_partial.yaml`): additionally trains the
+  **last 4 of 12 encoder blocks (blocks 8–11, 7,100,928 parameters)**. Everything else in the
+  encoder, including the shared final LayerNorm, stays frozen: 9,829,441 trainable /
+  14,955,648 frozen. It **initialises from the selected 2a checkpoint** (trained decoder + its
+  fixed s0 = 3.659840; no new s0 fit). Decoder LR 5e-5, encoder LR 5e-6, 20 epochs, and
+  otherwise identical to 2a (same loss, crops, validity mask, optimiser, schedule, bf16,
+  clipping). It was trained with the NaN-safe loss (`losses.sanitize`), which 2a didn't have;
+  the gradients are identical (see `docs/phase2a_results.md` §6.1).
+- **2b decision rule (fixed before training):** ΔRMSE = RMSE_2b − RMSE_2a on the same 859 val
+  tiles, with a paired tile bootstrap. Keep 2b only if the upper 95% bound is < 0; otherwise keep
+  2a. No tuning of 2b based on its validation result.
 
 ### Initial scale s0 (fixed, not trained)
 - Fitted **once, before training, on training tiles only**. It is a registered buffer, never an

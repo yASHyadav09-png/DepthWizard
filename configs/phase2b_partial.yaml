@@ -1,0 +1,43 @@
+name: phase2b_partial
+seed: 0
+phase1_commit: ef540d07840ab8f011f182b6ea6e5187b08ea480   # Phase 1 baselines
+phase2a_commit: e0e18bd                                     # 2a results (comparison reference)
+subset: full                 # same 5,004 train + 859 val as 2a (no test)
+model:
+  id: depth-anything/Depth-Anything-V2-Small-hf
+  revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
+trainable:
+  mode: partial              # DPT neck + head + last 4 of 12 DINOv2-S blocks; rest (incl. final LayerNorm) frozen
+  unfreeze_last_blocks: 4
+# Stage-wise: start from the selected 2a checkpoint (trained decoder + its fixed s0 = 3.659840).
+# The lower decoder LR (5e-5 vs 1e-4 in 2a) is for continuing from this trained decoder.
+init_from: runs/20260925-163139_phase2a_frozen/checkpoints/best.pt
+init_scale:                  # not used when init_from is set (s0 comes from the checkpoint)
+  n_tiles: 50
+  seed: 0
+data:
+  crop: 518
+  workers: 6
+  jitter: {brightness: 0.1, contrast: 0.1, saturation: 0.1, hue: 0.02}
+loss:
+  lambda_grad: 0.5
+  grad_scales: 4
+optim:
+  lr: 5.0e-5                 # decoder (neck + head)
+  encoder_lr: 5.0e-6         # unfrozen encoder blocks
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  warmup_steps: 500
+  schedule: cosine
+  grad_clip: 1.0
+batch:
+  size: 8
+  accum: 1
+  fallbacks: [[4, 2], [2, 4]]
+epochs: 20
+amp: bf16
+eval:
+  every_epochs: 3            # epochs 3, 6, ..., 18 and the final epoch 20
+  amp: bf16
+  workers: 4
+log_every: 50

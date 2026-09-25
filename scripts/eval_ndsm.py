@@ -66,6 +66,8 @@ def main():
     ap.add_argument("--run", type=Path, required=True)
     ap.add_argument("--phase1", type=Path, required=True)
     ap.add_argument("--name", help="label for figures/tables (default: config name)")
+    ap.add_argument("--compare-run", type=Path, help="earlier Phase 2 run (e.g. 2a) for delta = this - that")
+    ap.add_argument("--compare-name", default="phase2a")
     a = ap.parse_args()
     run, p1 = a.run, a.phase1
     cfg = yaml.safe_load(open(run / "config.yaml"))
@@ -75,6 +77,11 @@ def main():
     ids = splits["val"]
     set_deterministic()
     model, ck = load_model(run, cfg)
+    cmp_model = None
+    if a.compare_run:
+        cmp_cfg = yaml.safe_load(open(a.compare_run / "config.yaml"))
+        cmp_model, _ = load_model(a.compare_run, cmp_cfg)
+        cmp_metrics = json.loads((a.compare_run / "metrics_val_final.json").read_text())
     amp = cfg["eval"]["amp"] == "bf16"
     print(f"best.pt: epoch {ck['epoch']}, step {ck['global_step']}, s0 {ck['s0']:.6f}")
 
@@ -96,6 +103,7 @@ def main():
                     "--model", str(run / "per_tile_val_final.csv"), "--model-name", name,
                     "--reference", str(p1 / "per_tile_val.csv"),
                     "--ref-methods", "B1_r1022_pct_lin", "B0_zero", "B0_mean", "B2_oracle_r518", "B2_oracle_r1022",
+                    *(["--ref-model", str(a.compare_run / "per_tile_val_final.csv")] if a.compare_run else []),
                     "--out", str(run / "paired_bootstrap.json")], check=True)
 
     # 3. figures
@@ -125,7 +133,7 @@ def main():
     p1_ids = set(pd.read_csv(p1 / "per_tile_val.csv").id)
     panels = sorted(p for p in (p1 / "figures").glob("panel_*.png"))
     t1i = t1.set_index("id"); p1t = pd.read_csv(p1 / "per_tile_val.csv").set_index("id")
-    sc_g, sc_m, sc_b = [], [], []
+    sc_g, sc_m, sc_b, sc_c = [], [], [], []
     rng = np.random.default_rng(0)
     for pth in panels:
         stem = pth.stem[len("panel_"):]
@@ -136,8 +144,13 @@ def main():
             pm = model.predict_tile(to_input(t["rgb"]).to(DEVICE), amp=amp)[0, 0].cpu().numpy()
         d = upsample(np.load(cache / f"{tid}.npy"), (1024, 1024))
         pb = lin(normalise(d, norm_b1))
+        preds = {"B1 (Phase 1)": pb}
+        if cmp_model is not None:
+            with torch.no_grad():
+                preds[a.compare_name] = cmp_model.predict_tile(to_input(t["rgb"]).to(DEVICE), amp=amp)[0, 0].cpu().numpy()
+        preds[name] = pm
         viz.tile_panel(fig_dir / f"panel_{tag}_{tid}.png", tid, t["rgb"], t["ndsm"], t["valid"], d,
-                       {f"B1 (Phase 1)": pb, f"{name}": pm}, err_key=f"{name}",
+                       preds, err_key=f"{name}",
                        title_extra=f"{tag}: {name} RMSE {t1i.loc[tid, 'rmse']:.2f} m | "
                                    f"B1 RMSE {p1t.loc[tid, b1 + '_rmse']:.2f} m | B0-zero {p1t.loc[tid, 'B0_zero_rmse']:.2f} m")
 
@@ -150,11 +163,19 @@ def main():
             pm = model.predict_tile(to_input(t["rgb"]).to(DEVICE), amp=amp)[0, 0].cpu().numpy()
         pb = lin(normalise(upsample(np.load(cache / f"{tid}.npy"), (1024, 1024)), norm_b1))
         sc_g.append(t["ndsm"].ravel()[s]); sc_m.append(pm.ravel()[s]); sc_b.append(pb.ravel()[s])
+        if cmp_model is not None:
+            with torch.no_grad():
+                pc = cmp_model.predict_tile(to_input(t["rgb"]).to(DEVICE), amp=amp)[0, 0].cpu().numpy()
+            sc_c.append(pc.ravel()[s])
     g = np.concatenate(sc_g)
-    viz.density_scatter(fig_dir / "scatter_val.png", {f"B1 (Phase 1)": (g, np.concatenate(sc_b)),
-                                                      name: (g, np.concatenate(sc_m))})
+    pairs = {"B1 (Phase 1)": (g, np.concatenate(sc_b))}
+    if sc_c:
+        pairs[a.compare_name] = (g, np.concatenate(sc_c))
+    pairs[name] = (g, np.concatenate(sc_m))
+    viz.density_scatter(fig_dir / "scatter_val.png", pairs)
 
-    tables = {"B0_zero": p1m["B0_zero"], "B1": p1m[b1], "oracle_r518": p1m["B2_oracle_r518"], name: r1}
+    tables = {"B0_zero": p1m["B0_zero"], "B1": p1m[b1], "oracle_r518": p1m["B2_oracle_r518"],
+              **({a.compare_name: cmp_metrics} if a.compare_run else {}), name: r1}
     cls_names = ["ground", "low_vegetation", "road", "building", "tree", "water"]
     viz.grouped_bars(fig_dir / "rmse_per_class.png",
                      {k: {c: v["per_class"].get(c, {}).get("rmse") for c in cls_names} for k, v in tables.items()},

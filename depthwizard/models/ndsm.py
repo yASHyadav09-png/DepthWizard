@@ -40,9 +40,9 @@ class NDSMModel(nn.Module):
             for blk in layers[len(layers) - unfreeze_last_blocks:]:
                 for p in blk.parameters():
                     p.requires_grad_(True)
-            # the final backbone LayerNorm feeds the neck from the last block
-            for p in self.net.backbone.layernorm.parameters():
-                p.requires_grad_(True)
+            # The final backbone LayerNorm stays FROZEN: it is shared by all four
+            # features the DPT neck reads (blocks 3, 6, 9, 12), so training it would
+            # also change the outputs of the frozen early blocks.
         elif mode != "frozen_encoder":
             raise ValueError(mode)
         self.trainable_mode = mode

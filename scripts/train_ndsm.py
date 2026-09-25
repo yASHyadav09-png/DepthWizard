@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import random
@@ -27,7 +28,7 @@ import yaml
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from depthwizard.data.gamus import GAMUSDataset, load_subset, worker_init_fn  # noqa: E402
+from depthwizard.data.gamus import ROOT, GAMUSDataset, load_subset, worker_init_fn  # noqa: E402
 from depthwizard.eval.evaluate import SplitEvaluator  # noqa: E402
 from depthwizard.losses import total_loss  # noqa: E402
 from depthwizard.models.dav2 import set_deterministic  # noqa: E402
@@ -158,6 +159,7 @@ def train_steps(cfg, model, dl, bs, accum, max_opt_steps, opt, sched, log_path, 
             now = time.perf_counter()
             agg = {k: float(v) for k, v in agg.items()}
             row = {"step": step, "epoch": epoch, "lr": sched.get_last_lr()[0],
+                   "lr_encoder": sched.get_last_lr()[1] if len(opt.param_groups) > 1 else 0.0,
                    **{k: agg[k] / n_agg for k in agg},
                    "grad_to_l1_ratio": (agg["grad_weighted"] / max(agg["l1"], 1e-12)),
                    "samples_per_s": samples / (now - t_last),
@@ -216,6 +218,19 @@ def main():
     if args.resume:
         ck = torch.load(args.resume, map_location="cpu", weights_only=False)
         model.s0.fill_(ck["s0"])
+    elif cfg.get("init_from"):
+        # stage-wise training (2b): start from an earlier stage's selected checkpoint;
+        # its decoder weights and its fixed s0 are reused unchanged (no new s0 fit)
+        src = ROOT / cfg["init_from"]
+        ck_init = torch.load(src, map_location="cpu", weights_only=False)
+        missing, unexpected = model.load_state_dict(ck_init["trainable"], strict=False)
+        assert not unexpected, unexpected
+        assert all(not k.startswith(("net.neck", "net.head")) for k in missing), "decoder weights missing"
+        meta["init_from"] = {"path": cfg["init_from"], "sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+                             "source_epoch": ck_init["epoch"], "source_step": ck_init["global_step"],
+                             "source_best": ck_init["best"], "s0": float(ck_init["s0"]),
+                             "loaded_keys": len(ck_init["trainable"])}
+        print(f"initialised from {cfg['init_from']} (epoch {ck_init['epoch']}), s0 = {float(model.s0):.6f}")
     else:
         tr_plain = GAMUSDataset(cfg["subset"], "train", crop=cfg["data"]["crop"], train=False)
         init = fit_initial_scale(model, tr_plain, cfg["init_scale"]["n_tiles"], cfg["init_scale"]["seed"], DEVICE)
@@ -249,8 +264,17 @@ def main():
     tr, dl = make_loaders(cfg, bs, cfg["seed"])
     steps_per_epoch = len(dl) // accum
     total_steps = steps_per_epoch * cfg["epochs"]
-    params = [p for p in model.parameters() if p.requires_grad]
-    opt = torch.optim.AdamW(params, lr=cfg["optim"]["lr"], weight_decay=cfg["optim"]["weight_decay"],
+    # parameter groups: decoder (neck + head) at optim.lr, trainable encoder blocks at
+    # optim.encoder_lr (only present in the partial-unfreeze stage)
+    dec = [p for n, p in model.named_parameters() if p.requires_grad and n.startswith(("net.neck", "net.head"))]
+    enc = [p for n, p in model.named_parameters() if p.requires_grad and n.startswith("net.backbone")]
+    assert len(dec) + len(enc) == sum(1 for p in model.parameters() if p.requires_grad)
+    groups = [{"params": dec, "lr": cfg["optim"]["lr"], "name": "decoder"}]
+    if enc:
+        groups.append({"params": enc, "lr": cfg["optim"]["encoder_lr"], "name": "encoder"})
+    meta["param_groups"] = {g["name"]: {"lr": g["lr"], "tensors": len(g["params"]),
+                                        "params": sum(p.numel() for p in g["params"])} for g in groups}
+    opt = torch.optim.AdamW(groups, weight_decay=cfg["optim"]["weight_decay"],
                             betas=tuple(cfg["optim"]["betas"]))
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda(cfg["optim"]["warmup_steps"], total_steps))
     meta["schedule"] = {"steps_per_epoch": steps_per_epoch, "total_opt_steps": total_steps}
