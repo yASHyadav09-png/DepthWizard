@@ -1,0 +1,32 @@
+name: phase1_baseline
+seed: 0
+subset: phase1
+model:
+  id: depth-anything/Depth-Anything-V2-Small-hf
+  revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
+  precision: fp32
+grid:
+  input_res:
+  - 518
+  - 1022
+  normalise:
+  - pct
+  - medmad
+  mapping:
+  - lin
+  - iso
+calibration:
+  pixels_per_tile: 20000
+  select_by: val_rmse
+eval:
+  splits:
+  - val
+  height_bins:
+  - 0
+  - 2
+  - 5
+  - 10
+  - 20
+  - 1000
+  scatter_pixels_per_tile: 2000
+  n_panel_tiles: 8

@@ -1,0 +1,18 @@
+{
+  "name": "phase1_baseline_repro",
+  "started": "2026-09-25T05:24:22",
+  "seed": 0,
+  "git": {
+    "commit": "791ff8e8c932ea43d69abea05e7d6c77e9837598",
+    "dirty": true
+  },
+  "python": "3.11.0",
+  "torch": "2.11.0+cu128",
+  "cuda_device": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "cache": {},
+  "verify_determinism": {
+    "r518_max_abs_diff": 0.0,
+    "r1022_max_abs_diff": 0.0
+  },
+  "selected_b1": "B1_r1022_pct_lin"
+}

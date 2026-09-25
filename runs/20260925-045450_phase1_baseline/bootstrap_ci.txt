@@ -1,0 +1,15 @@
+tile-level bootstrap, 859 val tiles, 2000 resamples; 95% CI
+  RMSE B0_zero                7.845  [7.342, 8.347]
+  RMSE B0_mean                6.826  [6.429, 7.240]
+  RMSE B1_r1022_pct_lin       6.602  [6.206, 7.015]
+  RMSE B1_r1022_pct_iso       6.607  [6.211, 7.021]
+  RMSE B1_r518_pct_lin        6.624  [6.223, 7.034]
+  RMSE B1_r518_medmad_lin     6.627  [6.224, 7.046]
+  RMSE B1_r1022_medmad_lin    6.641  [6.239, 7.051]
+  RMSE B2_oracle_r1022        4.830  [4.605, 5.042]
+  diff B1_r1022_pct_lin - B0_mean: -0.224  [-0.263, -0.187]  P(diff<0)=1.000
+  diff B1_r1022_pct_lin - B0_zero: -1.243  [-1.364, -1.118]  P(diff<0)=1.000
+  diff B1_r1022_pct_lin - B1_r1022_pct_iso: -0.004  [-0.007, -0.002]  P(diff<0)=1.000
+  diff B1_r1022_pct_lin - B1_r518_pct_lin: -0.021  [-0.049, +0.005]  P(diff<0)=0.940
+  diff B1_r1022_pct_lin - B1_r1022_medmad_lin: -0.038  [-0.076, -0.004]  P(diff<0)=0.985
+  diff B2_oracle_r1022 - B1_r1022_pct_lin: -1.772  [-2.043, -1.526]  P(diff<0)=1.000

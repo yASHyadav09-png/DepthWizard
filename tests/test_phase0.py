@@ -90,3 +90,10 @@ def test_real_subset_dataloader():
     val = gamus.GAMUSDataset("phase0", "val")
     s = val[0]
     assert s["image"].shape == (3, 1024, 1024)
+
+
+def test_constant_prediction_has_undefined_r():
+    from depthwizard.eval.metrics import tile_metrics
+    gt = np.random.default_rng(0).uniform(0, 30, (256, 256)).astype(np.float32)
+    r = tile_metrics(np.full_like(gt, 4.709597), gt, np.ones_like(gt, bool))
+    assert r["pearson_r"] is None

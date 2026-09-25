@@ -1,0 +1,37 @@
+{
+  "name": "phase1_baseline",
+  "started": "2026-09-25T04:54:50",
+  "seed": 0,
+  "git": {
+    "commit": "791ff8e8c932ea43d69abea05e7d6c77e9837598",
+    "dirty": true
+  },
+  "python": "3.11.0",
+  "torch": "2.11.0+cu128",
+  "cuda_device": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "cache": {
+    "r518": {
+      "tiles": 1036,
+      "sec_per_tile": 0.1087439759817823,
+      "peak_gpu_mem_mb": 385.2451171875,
+      "model_output_shape": [
+        518,
+        518
+      ]
+    },
+    "r1022": {
+      "tiles": 1036,
+      "sec_per_tile": 0.4622718730948607,
+      "peak_gpu_mem_mb": 1196.09619140625,
+      "model_output_shape": [
+        1022,
+        1022
+      ]
+    }
+  },
+  "verify_determinism": {
+    "r518_max_abs_diff": 0.0,
+    "r1022_max_abs_diff": 0.0
+  },
+  "selected_b1": "B1_r1022_pct_lin"
+}

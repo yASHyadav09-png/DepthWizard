@@ -63,7 +63,11 @@ class _Acc:
         cov = s[_SPG] / n - (s[_SP] / n) * (s[_SG] / n)
         vp = s[_SPP] / n - (s[_SP] / n) ** 2
         vg = s[_SGG] / n - (s[_SG] / n) ** 2
-        r = cov / np.sqrt(vp * vg) if vp > 1e-12 and vg > 1e-12 else None
+        # relative tolerance: a constant prediction leaves only float rounding in vp,
+        # and its correlation is undefined, not ~0
+        tol = 1e-9
+        defined = vp > tol * max(s[_SPP] / n, 1.0) and vg > tol * max(s[_SGG] / n, 1.0)
+        r = cov / np.sqrt(vp * vg) if defined else None
         return {
             "n": int(n),
             "mae": float(s[_ABS] / n),
