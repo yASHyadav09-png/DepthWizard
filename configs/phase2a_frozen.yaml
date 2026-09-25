@@ -1,0 +1,38 @@
+name: phase2a_frozen
+seed: 0
+phase1_commit: ef540d07840ab8f011f182b6ea6e5187b08ea480   # Phase 1 baselines (targets come from here)
+subset: full                 # configs/subsets/full.yaml: 5,004 train + 859 val (no test)
+model:
+  id: depth-anything/Depth-Anything-V2-Small-hf
+  revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
+trainable:
+  mode: frozen_encoder       # DPT neck + head train; DINOv2-S encoder frozen
+  unfreeze_last_blocks: 0
+init_scale:                  # fixed s0 (buffer, not trained): h = s0 * net(x)
+  n_tiles: 50                # one 518 crop from each of 50 TRAIN tiles
+  seed: 0
+data:
+  crop: 518                  # native 0.33 m GSD, 37x37 patches
+  workers: 6
+  jitter: {brightness: 0.1, contrast: 0.1, saturation: 0.1, hue: 0.02}
+loss:
+  lambda_grad: 0.5
+  grad_scales: 4
+optim:
+  lr: 1.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  warmup_steps: 500          # optimizer steps, linear from 0
+  schedule: cosine           # to 0 at the last optimizer step
+  grad_clip: 1.0
+batch:
+  size: 8
+  accum: 1
+  fallbacks: [[4, 2], [2, 4]]   # used only if batch 8 does not fit (effective batch stays 8)
+epochs: 30                   # 1 epoch = one random crop per train tile
+amp: bf16
+eval:
+  every_epochs: 3            # full 859-tile val, whole tiles reflect-padded 1024 -> 1036
+  amp: bf16
+  workers: 4
+log_every: 50                # optimizer steps

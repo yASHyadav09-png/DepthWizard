@@ -129,6 +129,14 @@ Phase 2 is judged on the same 859 val tiles with the same metrics:
 - These runs recorded `git dirty = true`: `configs/subsets/phase1.yaml` was created after the
   last commit. The exact tile list is stored in each run's `split_manifest.txt`.
 
+- **Repository defect found after Phase 1 (fixed in the Phase 2 code commit):** the
+  `.gitignore` rule `data/` also matched `depthwizard/data/`, so `gamus.py` (tile reader,
+  NoData rule) and `download.py` were missing from commits `791ff8e` and `ef540d0`. A clean
+  checkout of `ef540d0` therefore can't rerun Phase 1 alone. The rule is now anchored (`/data/`)
+  and both files are committed. Phase 2 extended `read_tile` with an optional window read; the
+  full-tile path used by Phase 1 is unchanged, and `tests/test_phase0.py` checks that window
+  reads equal slices of full reads. To reproduce Phase 1, use the Phase 2 code commit or later.
+
 ## 7. Reproducibility check
 The full pipeline was run twice with the same config. All **3,858** reported values (every metric, breakdown and fitted calibration parameter, including the isotonic curves) are **bit-identical** between `runs/20260925-045450_phase1_baseline` and `runs/20260925-052422_phase1_baseline_repro`. The only change is B0-mean's Pearson r, which the first run reported as floating-point noise (±1e-9) and the second as undefined, after a metrics fix between the runs (a constant prediction has no correlation). `runs/results.csv` has rows for both runs; **the official rows are `20260925-052422_phase1_baseline_repro`**.
 

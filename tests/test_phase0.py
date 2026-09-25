@@ -57,14 +57,16 @@ def test_augmentation_keeps_alignment(monkeypatch):
     H = W = 64
     idx = np.arange(H * W).reshape(H, W)
 
-    def fake_read(split, tid, root=None):
-        rgb = np.stack([idx % 256, idx // 256, np.zeros_like(idx)], -1).astype(np.uint8)
-        return {"rgb": rgb, "ndsm": idx.astype(np.float32), "cls": (idx % 7).astype(np.uint8),
-                "valid": (idx % 2 == 0)}
+    def fake_read(split, tid, root=None, window=None):
+        y, x, c = window
+        w = idx[y:y + c, x:x + c]
+        rgb = np.stack([w % 256, w // 256, np.zeros_like(w)], -1).astype(np.uint8)
+        return {"rgb": rgb, "ndsm": w.astype(np.float32), "cls": (w % 7).astype(np.uint8),
+                "valid": (w % 2 == 0)}
 
     monkeypatch.setattr(gamus, "read_tile", fake_read)
     monkeypatch.setattr(gamus, "load_subset", lambda name: {"train": ["X"]})
-    ds = gamus.GAMUSDataset("fake", "train", crop=32, train=True)
+    ds = gamus.GAMUSDataset("fake", "train", crop=32, train=True, tile_size=H)
     for seed in range(20):
         np.random.seed(seed)
         s = ds[0]
@@ -97,3 +99,21 @@ def test_constant_prediction_has_undefined_r():
     gt = np.random.default_rng(0).uniform(0, 30, (256, 256)).astype(np.float32)
     r = tile_metrics(np.full_like(gt, 4.709597), gt, np.ones_like(gt, bool))
     assert r["pearson_r"] is None
+
+
+@pytest.mark.skipif(not HAS_SUBSET, reason="phase0 subset not downloaded")
+def test_window_read_equals_full_read():
+    tid = gamus.load_subset("phase0")["val"][0]
+    full = gamus.read_tile("val", tid)
+    win = gamus.read_tile("val", tid, window=(100, 300, 518))
+    for k in ("rgb", "ndsm", "cls", "valid"):
+        assert np.array_equal(win[k], full[k][100:618, 300:818]), k
+
+
+def test_color_jitter_is_mild_and_shape_preserving():
+    rgb = np.random.default_rng(0).integers(0, 256, (64, 64, 3)).astype(np.uint8)
+    out = gamus.color_jitter(rgb, np.random.default_rng(1))
+    assert out.shape == rgb.shape and out.dtype == np.uint8
+    assert np.abs(out.astype(int) - rgb.astype(int)).mean() < 30
+    same = gamus.color_jitter(rgb, np.random.default_rng(1), 0, 0, 0, 0)
+    assert np.abs(same.astype(int) - rgb.astype(int)).max() <= 1

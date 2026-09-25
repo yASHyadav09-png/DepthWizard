@@ -26,8 +26,8 @@ outputs/
 !sample_data/**/*.npy
 
 # --- Datasets (GAMUS, SRTM, LiDAR - future stages) ---
-data/
-datasets/
+/data/
+/datasets/
 *.tif
 *.tiff
 *.laz
@@ -55,3 +55,8 @@ runs/**/checkpoints/
 
 # smoke-test runs are pipeline checks, not results
 runs/*_smoke/
+
+# secrets (HF tokens live in ~/.cache/huggingface, never in the repo)
+.env
+*.token
+.huggingface/
