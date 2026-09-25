@@ -52,7 +52,16 @@ def gradient_loss(pred: torch.Tensor, gt: torch.Tensor, valid: torch.Tensor, sca
     return torch.stack(terms).mean()
 
 
+def sanitize(gt: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
+    """Replace targets at invalid pixels by 0. Masking is done by multiplication,
+    and NaN * 0 = NaN, so a NaN target (14 GAMUS PHL tiles contain NaN nDSM pixels,
+    all excluded by the validity mask) would otherwise make the loss VALUE NaN.
+    The gradient was already exactly 0 there; this only fixes the reported value."""
+    return torch.where(valid, gt, torch.zeros_like(gt))
+
+
 def total_loss(pred, gt, valid, lambda_grad: float = 0.5, scales: int = 4) -> dict[str, torch.Tensor]:
+    gt = sanitize(gt, valid)
     l1 = masked_l1(pred, gt, valid)
     g = gradient_loss(pred, gt, valid, scales)
     return {"l1": l1, "grad": g, "grad_weighted": lambda_grad * g, "total": l1 + lambda_grad * g}

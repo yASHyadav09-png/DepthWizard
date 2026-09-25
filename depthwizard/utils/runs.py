@@ -49,6 +49,7 @@ def git_info() -> dict:
 
 
 def new_run(name: str, config: dict) -> Path:
+    git = git_info()      # read BEFORE creating the run folder, which is itself untracked
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = RUNS_DIR / f"{stamp}_{name}"
     (run_dir / "figures").mkdir(parents=True, exist_ok=True)
@@ -58,7 +59,7 @@ def new_run(name: str, config: dict) -> Path:
         "name": name,
         "started": dt.datetime.now().isoformat(timespec="seconds"),
         "seed": config.get("seed"),
-        "git": git_info(),
+        "git": git,
         "python": platform.python_version(),
     }
     try:

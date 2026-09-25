@@ -46,3 +46,64 @@ def test_total_reports_components():
     out = total_loss(pred, gt, torch.ones_like(gt, dtype=torch.bool), lambda_grad=0.5)
     assert torch.isclose(out["total"], out["l1"] + 0.5 * out["grad"])
     assert torch.isclose(out["grad_weighted"], 0.5 * out["grad"])
+
+
+def test_nan_target_at_invalid_pixel_gives_finite_loss_and_same_gradient():
+    gt = torch.rand(1, 1, 16, 16) * 10
+    gt_nan = gt.clone(); gt_nan[..., 3, 4] = float("nan"); gt_nan[..., 10, :] = float("nan")
+    valid = torch.isfinite(gt_nan)
+    p1 = (gt + torch.randn_like(gt)).requires_grad_(True)
+    p2 = p1.detach().clone().requires_grad_(True)
+    a, b = total_loss(p1, gt_nan, valid), total_loss(p2, gt, valid)
+    assert torch.isfinite(a["total"]) and torch.isclose(a["total"], b["total"])
+    a["total"].backward(); b["total"].backward()
+    assert torch.equal(p1.grad, p2.grad)
+
+
+def test_nan_targets_regression_full_training_steps():
+    """Regression test for the Phase 2a finding (14 PHL tiles with NaN nDSM pixels).
+
+    With NaN (and inf) targets at pixels excluded by the validity mask, a few real
+    optimisation steps (forward, loss, backward, grad clipping, AdamW) must keep:
+      - the loss and every loss component finite,
+      - all gradients finite,
+      - all parameters and AdamW state (exp_avg, exp_avg_sq) finite,
+    and the invalid pixels must be fully excluded from the effective loss
+    (arbitrary values there give an identical loss and identical gradients)."""
+    torch.manual_seed(0)
+    net = torch.nn.Sequential(torch.nn.Conv2d(3, 8, 3, padding=1), torch.nn.ReLU(),
+                              torch.nn.Conv2d(8, 1, 3, padding=1))
+    opt = torch.optim.AdamW(net.parameters(), lr=1e-2, weight_decay=0.01)
+    x = torch.randn(2, 3, 24, 24)
+    gt = torch.rand(2, 1, 24, 24) * 20
+    gt[0, 0, :5, :] = float("nan")          # a NaN strip, like the PHL tiles
+    gt[1, 0, 7, 9] = float("nan")
+    gt[1, 0, 12, 3] = float("inf")
+    valid = torch.isfinite(gt)
+    assert (~valid).sum() == 5 * 24 + 2
+
+    for _ in range(5):
+        out = total_loss(net(x), gt, valid, lambda_grad=0.5)
+        for k, v in out.items():
+            assert torch.isfinite(v), k
+        opt.zero_grad(set_to_none=True)
+        out["total"].backward()
+        for p in net.parameters():
+            assert torch.isfinite(p.grad).all()
+        assert torch.isfinite(torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0))
+        opt.step()
+        for p in net.parameters():
+            assert torch.isfinite(p).all()
+            st = opt.state[p]
+            assert torch.isfinite(st["exp_avg"]).all() and torch.isfinite(st["exp_avg_sq"]).all()
+
+    # exclusion: the values stored at invalid pixels do not matter at all
+    pred = net(x).detach().requires_grad_(True)
+    pred2 = pred.detach().clone().requires_grad_(True)
+    other = gt.clone(); other[~valid] = 1e6
+    a, b = total_loss(pred, gt, valid), total_loss(pred2, other, valid)
+    assert all(torch.equal(a[k], b[k]) for k in a)
+    a["total"].backward(); b["total"].backward()
+    assert torch.equal(pred.grad, pred2.grad)
+    # and L1 equals the plain mean absolute error over valid pixels only
+    assert torch.isclose(a["l1"], (pred - gt).abs()[valid].mean())

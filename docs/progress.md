@@ -4,7 +4,7 @@
 |---|---|---|
 | 0 Data inspection + dataloader | **done** 2026-09-25 | RGB/nDSM/mask aligned; units, NoData verified; loader tested |
 | 1 Baselines (B0 trivial, B1 DA-V2-S + global calibration, B2 oracle per-image calibration) | **done** 2026-09-25 | reproducible val metrics + figures (bit-identical rerun) |
-| 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | next: awaiting plan approval | beats B1 on val; one test run |
+| 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **2a done** 2026-09-25; 2b awaiting decision | beats B1 on val; one test run |
 | 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | | GAMUS image viewable as 3D |
 | 4 Resolution/GSD handling + GCP correction | | GSD study in results.csv |
 | 5 Absolute DSM (DEM, CRS, vertical datum) | | valid GeoTIFF out, correct in QGIS |
@@ -26,8 +26,17 @@ B1 beats B0-mean by only 0.22 m and loses to B0-zero on MAE. Frozen DA-V2-S lack
 
 ## Phase 2 targets (fixed before training)
 val RMSE < 6.60 (bootstrap CI excluding 0) and building RMSE < 7.10; MAE < 3.94 (beat B0-zero);
-aim for RMSE < 4.77 / MAE < 3.03 (beat the oracle per-image calibration baseline).
+aim for RMSE < 4.77 / MAE < 3.03 (outperform the oracle per-image calibration baseline).
+
+## Phase 2a summary
+See `docs/phase2a_results.md`. Run `runs/20260925-163139_phase2a_frozen`, best epoch 27/30.
+Val: RMSE 3.548, MAE 1.729, r 0.861, bias -0.62; building RMSE 4.61, tree 5.51.
+Significantly better than B1 and B0, and outperformed the Phase 1 oracle per-image calibration baseline
+on the reported val metrics (all paired-bootstrap upper bounds < 0; the oracle baseline is a diagnostic
+reference, not a theoretical upper bound). Trained before the NaN-target fix (logging-only issue). Remaining error: tall objects underestimated (-9 m above 20 m), DC leaf-off forest.
+Test split untouched. 2b not started.
 
 ## Data status
 - `phase1` subset: 200 train + 859 val, complete.
 - `full` subset: all 5,004 train (DC 1439, NYC 1167, PHL 2398) + 859 val, complete and verified (52 GB). Test not downloaded.
+- 14 PHL tiles (7 train, 7 val) contain NaN nDSM pixels (24,235 px); excluded by valid_mask.

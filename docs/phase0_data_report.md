@@ -60,7 +60,7 @@ Implemented once in `depthwizard/data/gamus.py::valid_mask`:
 | Isolated spikes up to 203 m on flat ground | PHL_6743, PHL_1364, PHL_3300 (speckle strip at tile edge) | **invalid** if > 20 m above the 5×5 median |
 | Real 60–94 m buildings | PHL_2725, DC_27_38 | kept (the spike filter drops only ~30 corner pixels) |
 | Small dropout pits on roofs | e.g. PHL_5497 | not handled yet (minor) |
-| No NaN / inf | all | — |
+| No NaN / inf in this 50-tile survey. **A later full scan (Phase 2a) found NaN nDSM pixels in 14 PHL tiles** (7 train, 7 val; 24,235 px) | PHL | invalid (`isfinite` in `valid_mask`) |
 
 No global height cap is applied, because it would delete real skyscrapers.
 
