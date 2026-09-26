@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from anyio import to_thread
 from fastapi import APIRouter, File, Form, UploadFile
@@ -44,10 +45,12 @@ def health() -> HealthResponse:
 
 
 @router.post("/process", response_model=ProcessResponse, tags=["pipeline"])
-async def process(image: UploadFile = File(...), gsd_m: float | None = Form(None)) -> dict:
-    """Run RGB -> nDSM (metres) -> terrain for one uploaded image.
-
-    `gsd_m` (optional): ground resolution in metres per pixel, if known."""
+async def process(image: UploadFile = File(...), gsd_m: float | None = Form(None),
+                  gcps: UploadFile | None = File(None), gcp_model: str = Form("offset")) -> dict:
+    """JPG/PNG: RGB -> nDSM (metres) -> terrain. `gsd_m` (optional): metres per pixel, if known.
+    GeoTIFF: CRS/transform/GSD from the file -> nDSM + GLO-30 DTM -> absolute DSM (EGM2008);
+    optional `gcps` CSV (x,y,z in the image CRS or lon,lat,z; z in m EGM2008), `gcp_model`
+    offset|plane."""
     try:
         data = await image.read()
     except Exception as exc:  # noqa: BLE001
@@ -55,6 +58,18 @@ async def process(image: UploadFile = File(...), gsd_m: float | None = Form(None
     finally:
         await image.close()
 
+    suffix = Path(image.filename or "").suffix.lower()
+    if suffix in settings.GEO_EXTENSIONS:
+        from app.services.geo_pipeline import run_geo_pipeline
+        from app.utils import image_io
+
+        image_io.validate_upload(image.filename, image.content_type, data)
+        if gcp_model not in ("offset", "plane"):
+            raise InvalidImageError("gcp_model must be 'offset' or 'plane'.")
+        gcp_bytes = await gcps.read() if gcps is not None else None
+        return await to_thread.run_sync(lambda: run_geo_pipeline(data, image.filename, gcp_bytes, gcp_model))
+    if gcps is not None:
+        raise InvalidImageError("GCPs need a georeferenced GeoTIFF input.")
     # Inference is CPU/GPU-bound and blocking; keep the event loop responsive.
     return await to_thread.run_sync(
         lambda: run_pipeline(data, image.filename, image.content_type, gsd_m)
@@ -81,9 +96,10 @@ def height_array(job_id: str) -> FileResponse:
 
 
 @router.post("/results/{job_id}/validate", tags=["validation"])
-async def validate_job(job_id: str, reference: UploadFile = File(...)) -> dict:
-    """Compare the job's nDSM with a reference height array (.npy, metres, same pixel grid;
-    NaN = no data). Returns RMSE/MAE/r/bias, a per-height-band breakdown and an error map."""
+async def validate_job(job_id: str, reference: UploadFile = File(...), target: str = Form("auto")) -> dict:
+    """Compare the job's heights with a reference: a .npy on the same pixel grid (m, NaN = no data)
+    or, for georeferenced jobs, a GeoTIFF that is reprojected onto the job grid. `target`:
+    auto | dsm | ndsm (auto = the job's product: DSM for georeferenced jobs with a DEM)."""
     from app.services.validation import validate
 
     storage.validate_job_id(job_id)
@@ -93,7 +109,9 @@ async def validate_job(job_id: str, reference: UploadFile = File(...)) -> dict:
         await reference.close()
     if len(data) > settings.MAX_UPLOAD_BYTES * 4:
         raise InvalidImageError("Reference file is too large.")
-    return await to_thread.run_sync(lambda: validate(job_id, data, reference.filename))
+    if target not in ("auto", "dsm", "ndsm"):
+        raise InvalidImageError("target must be auto, dsm or ndsm.")
+    return await to_thread.run_sync(lambda: validate(job_id, data, reference.filename, target))
 
 
 @router.get("/jobs", response_model=JobListResponse, tags=["pipeline"])

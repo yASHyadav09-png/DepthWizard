@@ -1,0 +1,234 @@
+{
+  "datum": {
+    "offset_m": -0.4780849063475203,
+    "spread_m": 0.007162094716363754,
+    "pipeline": "unavailable until proj_trans is called"
+  },
+  "horizontal_crs_match": true,
+  "image": {
+    "crs": "EPSG:26917",
+    "gsd_m": 0.6,
+    "shape": [
+      2185,
+      2194
+    ],
+    "notes": []
+  },
+  "dem": {
+    "source": "Copernicus GLO-30 DEM",
+    "file": "E:\\SIH_Project\\depthwizard\\data\\geo\\pittsburgh\\glo30_dem.tif",
+    "vertical_datum": "EGM2008 geoid height (EPSG:3855)",
+    "horizontal_crs": "EPSG:4326",
+    "dem_pixel_m": [
+      23.54,
+      30.92
+    ],
+    "ground_filter": {
+      "method": "grey opening + gaussian",
+      "window_m": 150.0,
+      "sigma_px": 1.0
+    },
+    "resampling": "bilinear",
+    "nodata_filled_px": 236,
+    "coverage_fraction": 1.0
+  },
+  "metrics": {
+    "DTM: ours (filtered GLO-30) vs LiDAR DTM": {
+      "n": 429675,
+      "mae": 2.9842309154462336,
+      "rmse": 4.453995297875441,
+      "pearson_r": 0.9961443385902825,
+      "bias": -1.024617519803701
+    },
+    "DTM: raw GLO-30 vs LiDAR DTM (baseline)": {
+      "n": 429675,
+      "mae": 2.370459480199083,
+      "rmse": 3.2679866896697303,
+      "pearson_r": 0.9979533562449674,
+      "bias": 0.8910033098690143
+    },
+    "DSM: ours vs LiDAR DSM": {
+      "n": 431648,
+      "mae": 3.9779122872811796,
+      "rmse": 5.404557008165216,
+      "pearson_r": 0.9944394124769304,
+      "bias": -1.597283580285694
+    },
+    "DSM: raw GLO-30 vs LiDAR DSM (baseline)": {
+      "n": 431648,
+      "mae": 3.583663807265956,
+      "rmse": 4.763319995429426,
+      "pearson_r": 0.9963621499257493,
+      "bias": -2.2725698333698947
+    },
+    "nDSM: model vs LiDAR nDSM": {
+      "n": 429675,
+      "mae": 2.0195563147098365,
+      "rmse": 3.048912369132901,
+      "pearson_r": 0.5464875873803602,
+      "bias": -0.561727012072258
+    },
+    "DSM: LiDAR DTM + model nDSM (nDSM error only)": {
+      "n": 429675,
+      "mae": 2.0195563104946577,
+      "rmse": 3.048912367250106,
+      "pearson_r": 0.9981292863797534,
+      "bias": -0.5617270010567921
+    },
+    "DSM: our DTM + LiDAR nDSM (DTM error only)": {
+      "n": 429675,
+      "mae": 2.984230913457539,
+      "rmse": 4.453995296555026,
+      "pearson_r": 0.9961402556142551,
+      "bias": -1.0246175194485772
+    },
+    "nDSM: model vs LiDAR nDSM, LiDAR nDSM > 2 m": {
+      "n": 206963,
+      "mae": 3.037093138830819,
+      "rmse": 3.9394252385513613,
+      "pearson_r": 0.2606915009784935,
+      "bias": -2.0332923520301054
+    }
+  },
+  "alignment": {
+    "shift_px_2m": [
+      -0.09945545345544815,
+      1.99690295686014
+    ],
+    "shift_m": [
+      -0.1989109069108963,
+      3.99380591372028
+    ],
+    "ncc_peak": 0.5807521939277649,
+    "method": "FFT cross-correlation of model nDSM vs LiDAR nDSM on the 2 m grid, sub-pixel parabola"
+  },
+  "gcp_simulation": {
+    "offset": {
+      "fit": {
+        "model": "offset",
+        "params": {
+          "a": 1.5418701171875,
+          "b": 0.0,
+          "c": 0.0
+        },
+        "x0": 586087.6,
+        "y0": 4475434.6,
+        "n_inside": 5,
+        "n_used": 5,
+        "n_outside": 0,
+        "rmse_before": 5.48644597919407,
+        "rmse_after": 4.753390479794502
+      },
+      "DTM vs LiDAR (pixels > 50 m from GCPs)": {
+        "n": 417949,
+        "mae": 3.1768269642415885,
+        "rmse": 4.334958233280964,
+        "pearson_r": 0.9961351280106345,
+        "bias": 0.5965884568091717
+      },
+      "DSM vs LiDAR (pixels > 50 m from GCPs)": {
+        "n": 419765,
+        "mae": 3.8668002580952567,
+        "rmse": 5.127685568725065,
+        "pearson_r": 0.9944239112348768,
+        "bias": 0.03447371340365387
+      }
+    },
+    "plane": {
+      "fit": {
+        "model": "plane",
+        "params": {
+          "a": 3.205111694341181,
+          "b": 0.0004825159910429415,
+          "c": -0.014105598441025194
+        },
+        "x0": 586087.6,
+        "y0": 4475434.6,
+        "n_inside": 5,
+        "n_used": 5,
+        "n_outside": 0,
+        "rmse_before": 5.48644597919407,
+        "rmse_after": 1.1539897587591101
+      },
+      "DTM vs LiDAR (pixels > 50 m from GCPs)": {
+        "n": 417949,
+        "mae": 5.636376371380221,
+        "rmse": 7.482491603025683,
+        "pearson_r": 0.9933533300233695,
+        "bias": 2.4315024154903058
+      },
+      "DSM vs LiDAR (pixels > 50 m from GCPs)": {
+        "n": 419765,
+        "mae": 6.141243939727274,
+        "rmse": 7.947846759424614,
+        "pearson_r": 0.9917272637937959,
+        "bias": 1.8458586702454378
+      }
+    },
+    "no_gcp_same_pixels": {
+      "DTM": {
+        "n": 417949,
+        "mae": 2.9471754533180325,
+        "rmse": 4.396533012598113,
+        "pearson_r": 0.9961351280077733,
+        "bias": -0.9452816622402737
+      },
+      "DSM": {
+        "n": 419765,
+        "mae": 3.9351735740955065,
+        "rmse": 5.344549989633262,
+        "pearson_r": 0.994423911312729,
+        "bias": -1.5073964648168214
+      }
+    }
+  },
+  "filter_window_sensitivity_DIAGNOSTIC": {
+    "0": {
+      "n": 429675,
+      "mae": 2.370459480199083,
+      "rmse": 3.2679866896697303,
+      "pearson_r": 0.9979533562449674,
+      "bias": 0.8910033098690143
+    },
+    "90": {
+      "n": 429675,
+      "mae": 2.5060279780937376,
+      "rmse": 3.6141668569637266,
+      "pearson_r": 0.997262682677675,
+      "bias": 0.0012138398926718778
+    },
+    "150": {
+      "n": 429675,
+      "mae": 2.9840471255825736,
+      "rmse": 4.453773600095683,
+      "pearson_r": 0.9961446388108761,
+      "bias": -1.024511950681463
+    },
+    "300": {
+      "n": 429675,
+      "mae": 5.449179707031818,
+      "rmse": 8.92139439148443,
+      "pearson_r": 0.9896596161434142,
+      "bias": -4.381881589112138
+    },
+    "600": {
+      "n": 429675,
+      "mae": 7.164337614679472,
+      "rmse": 11.615829396130822,
+      "pearson_r": 0.98644777346808,
+      "bias": -6.3430906054625
+    }
+  },
+  "outputs": {
+    "dsm": "runs\\20260926-161419_phase5_pittsburgh\\geotiff\\pittsburgh_dsm.tif",
+    "dtm": "runs\\20260926-161419_phase5_pittsburgh\\geotiff\\pittsburgh_dtm.tif",
+    "ndsm": "runs\\20260926-161419_phase5_pittsburgh\\geotiff\\pittsburgh_ndsm.tif"
+  },
+  "diagnostic_raw_glo30_plus_model_ndsm_vs_lidar_dsm": {
+    "n": 431648,
+    "mae": 3.115975711633599,
+    "rmse": 4.173553940041708,
+    "pearson_r": 0.9964381793047411,
+    "bias": 0.32491840536046995
+  }
+}

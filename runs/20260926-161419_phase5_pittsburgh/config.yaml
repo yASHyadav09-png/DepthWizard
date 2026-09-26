@@ -1,0 +1,19 @@
+aoi:
+  name: pittsburgh
+  lon: -79.985
+  lat: 40.425
+  half_m: 650.0
+  bounds_lonlat:
+  - -79.9926702540767
+  - 40.41916097736256
+  - -79.9773297459233
+  - 40.430839022637436
+naip: pa_m_4007933_sw_17_060_20190918_20191204
+lidar_dsm: PA_WesternPA_2_2019-dsm-2m-5-1
+lidar_dtm: PA_WesternPA_2_2019-dtm-2m-5-1
+glo30:
+- Copernicus_DSM_COG_10_N40_00_W081_00_DEM
+- Copernicus_DSM_COG_10_N40_00_W080_00_DEM
+model_run: 20260926-003630_phase2b_partial
+ground_filter_window_m: 150.0
+comparison_grid: LiDAR 2 m grid, our products area-averaged

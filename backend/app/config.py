@@ -21,8 +21,8 @@ class Settings:
     """Runtime settings, overridable through environment variables."""
 
     APP_NAME = "DepthWizard"
-    APP_STAGE = "Phase 3 - metric nDSM from the trained DA-V2-S model"
-    VERSION = "0.3.0"
+    APP_STAGE = "Phase 5 - nDSM (JPG/PNG) and absolute DSM (GeoTIFF + GLO-30)"
+    VERSION = "0.5.0"
 
     # --- Model -----------------------------------------------------------
     # A Phase 2 training run; its checkpoints/best.pt is loaded. Default: the
@@ -40,8 +40,16 @@ class Settings:
 
     # --- Upload limits ---------------------------------------------------
     MAX_UPLOAD_BYTES = int(_env("DW_MAX_UPLOAD_MB", "40")) * 1024 * 1024
-    ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png"}
-    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+    ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/tiff", "image/tif",
+                             "application/octet-stream"}
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+    GEO_EXTENSIONS = {".tif", ".tiff"}
+
+    # --- DEM (Phase 5) ---------------------------------------------------
+    # Cached Copernicus GLO-30 under data/dem and data/geo/*; if none covers an upload,
+    # fetch a clip from Microsoft Planetary Computer (set DW_DEM_ALLOW_FETCH=0 for an
+    # offline demo; uncovered uploads then fall back to a georeferenced nDSM).
+    DEM_ALLOW_FETCH = _env("DW_DEM_ALLOW_FETCH", "1") == "1"
     # Inference runs at native resolution (never downscaled: the model is
     # trained at a fixed ground resolution), in overlapping 1024 px windows.
     # This caps the work per request.

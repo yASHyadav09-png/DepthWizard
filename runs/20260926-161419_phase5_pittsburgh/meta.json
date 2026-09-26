@@ -1,0 +1,12 @@
+{
+  "name": "phase5_pittsburgh",
+  "started": "2026-09-26T16:14:19",
+  "seed": null,
+  "git": {
+    "commit": "7d2c8e6dd52fb0ced1350ee87a1f6144cccff42d",
+    "dirty": true
+  },
+  "python": "3.11.0",
+  "torch": "2.11.0+cu128",
+  "cuda_device": "NVIDIA GeForce RTX 5050 Laptop GPU"
+}

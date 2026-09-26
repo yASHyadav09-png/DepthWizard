@@ -20,6 +20,8 @@ TEXTURE_JPG = "texture.jpg"
 HEIGHT_PNG = "ndsm_colour.png"
 HILLSHADE_PNG = "ndsm_hillshade.png"
 HEIGHT_NPY = "ndsm_m.npy"
+DSM_NPY = "dsm_m.npy"
+INPUT_TIF = "input.tif"
 METADATA_JSON = "metadata.json"
 
 
