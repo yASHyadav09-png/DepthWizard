@@ -1,0 +1,77 @@
+{
+  "definition": "delta = metric_x - metric_y, paired tile bootstrap, 2000 resamples, seed 0",
+  "results": {
+    "phase2b_minus_B1": {
+      "RMSE": {
+        "model": 4.687449543682717,
+        "reference": 7.2933714082438,
+        "delta": -2.6059218645610835,
+        "ci95": [
+          -2.7155543268676396,
+          -2.4972478402121965
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 2.0124127350622865,
+        "reference": 4.827218680220855,
+        "delta": -2.8148059451585685,
+        "ci95": [
+          -2.8681054874157357,
+          -2.760151315783065
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "phase2b_minus_B0_zero": {
+      "RMSE": {
+        "model": 4.687449543682717,
+        "reference": 8.724033788809514,
+        "delta": -4.0365842451267975,
+        "ci95": [
+          -4.189220000381016,
+          -3.8860258297531978
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 2.0124127350622865,
+        "reference": 4.423401311486462,
+        "delta": -2.410988576424175,
+        "ci95": [
+          -2.495260824587042,
+          -2.3272901917432924
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "B1_minus_B0_zero": {
+      "RMSE": {
+        "model": 7.2933714082438,
+        "reference": 8.724033788809514,
+        "delta": -1.430662380565714,
+        "ci95": [
+          -1.501699177360036,
+          -1.3575172236308612
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 4.827218680220855,
+        "reference": 4.423401311486462,
+        "delta": 0.40381736873439333,
+        "ci95": [
+          0.33276640426308635,
+          0.47443566938765475
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    }
+  }
+}

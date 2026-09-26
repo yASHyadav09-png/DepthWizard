@@ -1,0 +1,18 @@
+name: final_test
+split: test
+subset: test_final
+n_tiles: 2861
+methods:
+  B0_zero: 0 m everywhere
+  B1:
+    calibration: runs\20260925-052422_phase1_baseline_repro\calibration.json
+    sha256: 010e3cafe8a2658df86ac62ce5ccdae042632203ee3dcdc04bb0e1928069de44
+    a: 6.423369900953982
+    b: 2.130344359864132
+    input_res: 1022
+    normalise: pct
+    model_revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
+  phase2b:
+    run: 20260926-003630_phase2b_partial
+    checkpoint_sha256: e55ec4ca7bda6b74ecef2e5b78253e4dec79b86e40b5e897e07d4d994eafaeb9
+policy: one-time; nothing fitted, tuned or selected on these results

@@ -59,6 +59,12 @@ See `docs/phase7_explorer.md`. Full-screen 3D Explorer in real metres: Orbit/Fly
 movement (fly >= 2 m, walk eye 1.7 m), minimap, HUD, slope layer, profile + measure, validation panel
 (same metric code as evaluation), screenshot + export.
 
+## Final test evaluation (FROZEN)
+See `docs/final_test_report.md`, run `runs/20260926-141407_final_test` (2,861 tiles incl. 1,000 NYC).
+Test RMSE / MAE: B0-zero 8.72 / 4.42, B1 7.29 / 4.83, **Phase 2b 4.69 / 2.01** (r 0.79).
+2b - B1: dRMSE -2.61 [-2.72, -2.50], dMAE -2.82. NYC 4.61 / 2.55. Test > val mainly because of Center City
+Philadelphia skyscrapers (LiDAR up to 305 m; worst 5% of tiles = 51% of squared error). No further test use.
+
 ## Data status
 - `phase1` subset: 200 train + 859 val, complete.
 - `full` subset: all 5,004 train (DC 1439, NYC 1167, PHL 2398) + 859 val, complete and verified (52 GB). Test not downloaded.

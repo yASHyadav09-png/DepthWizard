@@ -110,20 +110,24 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--all", action="store_true", help="whole train+val splits")
     ap.add_argument("--include-test", action="store_true")
+    ap.add_argument("--only-test", action="store_true",
+                    help="download ONLY the test split (for the one-time final evaluation)")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
 
     tiles = list_tiles()
     rng = random.Random(args.seed)
     subset = {}
-    if args.all:
+    if args.only_test:
+        subset = {}
+    elif args.all:
         subset = {"train": list(tiles["train"]), "val": list(tiles["val"])}
     else:
         # a negative count means "the whole split"
         for split, n in (("train", args.train), ("val", args.val)):
             ids = list(tiles[split])
             subset[split] = ids if n < 0 else stratified_sample(ids, n, rng)
-    if args.include_test:
+    if args.include_test or args.only_test:
         subset["test"] = list(tiles["test"])
 
     patterns = [p for split, ids in subset.items() for t in ids for p in tiles[split][t]]
