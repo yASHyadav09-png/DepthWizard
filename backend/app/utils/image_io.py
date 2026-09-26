@@ -30,12 +30,12 @@ def validate_upload(filename: str | None, content_type: str | None, data: bytes)
     suffix = Path(filename or "").suffix.lower()
     if suffix and suffix not in settings.ALLOWED_EXTENSIONS:
         raise InvalidImageError(
-            f"Unsupported file type '{suffix}'. Stage 1 accepts JPG and PNG only."
+            f"Unsupported file type '{suffix}'. Phase 3 accepts JPG and PNG only (GeoTIFF arrives in Phase 5)."
         )
 
     if content_type and content_type.lower() not in settings.ALLOWED_CONTENT_TYPES:
         raise InvalidImageError(
-            f"Unsupported content type '{content_type}'. Stage 1 accepts JPG and PNG only."
+            f"Unsupported content type '{content_type}'. Phase 3 accepts JPG and PNG only (GeoTIFF arrives in Phase 5)."
         )
 
 

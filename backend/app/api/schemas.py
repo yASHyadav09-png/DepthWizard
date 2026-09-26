@@ -44,6 +44,9 @@ class TerrainGridModel(BaseModel):
     plane_depth: float
     source_width: int
     source_height: int
+    gsd_m: float
+    display_min: float
+    display_max: float
     height_units: str
 
 
@@ -55,6 +58,7 @@ class ProcessResponse(BaseModel):
     stage_label: str
     source: dict[str, Any]
     model: dict[str, Any]
+    height_product: dict[str, Any]
     statistics: dict[str, Any]
     assets: dict[str, str]
     terrain: TerrainGridModel

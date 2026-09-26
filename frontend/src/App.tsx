@@ -12,13 +12,14 @@ import { Badge, Panel } from './components/ui'
 import { ApiError, getHealth, getResult, processImage } from './services/api'
 import type { HealthResponse, PipelineStage, ProcessResult, ViewMode } from './types'
 
-const DEFAULT_EXAGGERATION = 0.3
+const DEFAULT_EXAGGERATION = 1 // true vertical scale
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [healthError, setHealthError] = useState<string | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
+  const [gsd, setGsd] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [stage, setStage] = useState<PipelineStage>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +118,13 @@ export default function App() {
 
   const handleGenerate = useCallback(async () => {
     if (!file) return
+    const gsdTrim = gsd.trim()
+    const gsdM = gsdTrim === '' ? null : Number(gsdTrim)
+    if (gsdM !== null && !(Number.isFinite(gsdM) && gsdM >= 0.01 && gsdM <= 100)) {
+      setStage('error')
+      setError('Ground resolution must be a number between 0.01 and 100 m per pixel (or empty).')
+      return
+    }
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -130,7 +138,7 @@ export default function App() {
     const toInferring = window.setTimeout(() => setStage('inferring'), 350)
 
     try {
-      const payload = await processImage(file, controller.signal)
+      const payload = await processImage(file, gsdM, controller.signal)
       window.clearTimeout(toInferring)
       setStage('building')
       setResult(payload)
@@ -149,7 +157,7 @@ export default function App() {
           : 'Processing failed for an unknown reason.',
       )
     }
-  }, [file])
+  }, [file, gsd])
 
   const hasTerrain = Boolean(result)
 
@@ -168,6 +176,8 @@ export default function App() {
               previewUrl={previewUrl}
               stage={stage}
               maxUploadMb={health?.max_upload_mb ?? null}
+              gsd={gsd}
+              onGsd={setGsd}
               onSelect={handleSelect}
               onGenerate={handleGenerate}
               onReset={handleReset}
@@ -178,7 +188,7 @@ export default function App() {
           {/* ---- centre: 3D terrain + rasters ---- */}
           <div className="order-1 flex min-w-0 flex-col gap-4 lg:col-span-2 xl:order-none xl:col-span-1">
             <Panel
-              title="3 · 3D Relative Terrain"
+              title="3 · 3D Terrain (height above ground)"
               aside={
                 result ? (
                   <Badge tone="relief">
@@ -230,9 +240,9 @@ export default function App() {
 
       <footer className="mx-auto w-full max-w-[1800px] px-5 pt-1 pb-5">
         <p className="text-[11px] text-slate-600">
-          DepthWizard Stage 1 · monocular relative height from a single
-          non-georeferenced view. Absolute/metric DSM, GeoTIFF, SRTM/GCP calibration and
-          GAMUS semantic refinement arrive in later stages.
+          DepthWizard Phase 3 · height above ground (nDSM, metres) from a single
+          top-down view with Depth Anything V2 Small fine-tuned on GAMUS. Resolution
+          handling (Phase 4) and GeoTIFF / absolute DSM (Phase 5) arrive next.
         </p>
       </footer>
     </div>

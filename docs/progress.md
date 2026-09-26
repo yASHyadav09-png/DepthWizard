@@ -5,7 +5,7 @@
 | 0 Data inspection + dataloader | **done** 2026-09-25 | RGB/nDSM/mask aligned; units, NoData verified; loader tested |
 | 1 Baselines (B0 trivial, B1 DA-V2-S + global calibration, B2 oracle per-image calibration) | **done** 2026-09-25 | reproducible val metrics + figures (bit-identical rerun) |
 | 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **done** 2026-09-26: 2b kept (pre-registered rule) | beats B1 on val; one test run |
-| 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | | GAMUS image viewable as 3D |
+| 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | **done** 2026-09-26 | web path = evaluated model (Δ 1e-13 m); large images tiled; 3D in metres |
 | 4 Resolution/GSD handling + GCP correction | | GSD study in results.csv |
 | 5 Absolute DSM (DEM, CRS, vertical datum) | | valid GeoTIFF out, correct in QGIS |
 | 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) | | per-landscape metrics |
@@ -42,6 +42,12 @@ Val: RMSE 3.148, MAE 1.556, r 0.889, bias -0.42; building RMSE 3.84, tree 4.88.
 Decision: dRMSE(2b-2a) = -0.400 [-0.480, -0.326] -> upper bound < 0 -> **2b is the Phase 2 model**.
 Still underestimates tall objects (-6.3 m bias above 20 m). NYC untested (no NYC val tiles).
 Test split untouched; awaiting explicit approval for any test-set action.
+
+## Phase 3 summary
+See `docs/phase3_demo.md`. Upload JPG/PNG -> 2b model (tiled, native resolution) -> nDSM in metres ->
+3D terrain at true scale, hover height readout, elevation legend, metric-validity warning.
+Hand-off contract `height_product` (kind, units, gsd + source, metric_validity, crs/transform/datum null
+until Phase 5). Run: see docs/phase3_demo.md. Old backend/.venv retired (project .venv only).
 
 ## Data status
 - `phase1` subset: 200 train + 859 val, complete.

@@ -3,8 +3,8 @@ import { Panel } from './ui'
 
 const STEPS = [
   { key: 'upload', label: 'Upload & validate', timing: 'load_image_ms' },
-  { key: 'depth', label: 'Depth Anything V2 inference', timing: 'depth_inference_ms' },
-  { key: 'height', label: 'Relative height / rDSM', timing: 'height_processing_ms' },
+  { key: 'depth', label: 'nDSM inference (trained DA-V2-S, tiled)', timing: 'ndsm_inference_ms' },
+  { key: 'height', label: 'Height statistics (m)', timing: 'statistics_ms' },
   { key: 'terrain', label: 'Terrain mesh grid', timing: 'terrain_generation_ms' },
   { key: 'export', label: 'Artefact export', timing: 'artefact_export_ms' },
 ] as const

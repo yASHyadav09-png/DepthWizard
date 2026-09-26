@@ -1,5 +1,12 @@
 # DepthWizard — Single-View Height Estimation & 3D Flythrough
 
+> ### Current status (Phase 3)
+> The app now runs the **trained model** (Depth Anything V2 Small fine-tuned on GAMUS, Phase 2b)
+> and predicts **height above ground in metres** (nDSM). The Stage-1 description below is kept for
+> history; for how to run the current app see **`docs/phase3_demo.md`**, and for project status
+> see **`docs/progress.md`**.
+
+
 **Smart India Hackathon 2026 · Problem Statement 26175 · ISRO**
 
 Turn a single ordinary photograph into an interactive 3D terrain surface driven by

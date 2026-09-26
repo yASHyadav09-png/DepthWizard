@@ -70,19 +70,29 @@ export function Dot({ tone = 'relief' }: { tone?: 'relief' | 'warn' | 'danger' }
 }
 
 /** The disclaimer that must never be missing from a Stage 1 screen. */
-export function RelativeHeightNotice({ className = '' }: { className?: string }) {
+/** States how far the metres on screen can be trusted (height_product.metric_validity). */
+export function MetricNotice({
+  validity,
+  note,
+  className = '',
+}: {
+  validity: 'valid' | 'uncertain'
+  note: string
+  className?: string
+}) {
+  const ok = validity === 'valid'
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-lg border border-warn-400/30 bg-warn-400/8 px-3 py-2 ${className}`}
+      className={`flex items-start gap-2.5 rounded-lg border px-3 py-2 ${
+        ok ? 'border-relief-400/30 bg-relief-400/8' : 'border-warn-400/30 bg-warn-400/8'
+      } ${className}`}
     >
-      <svg viewBox="0 0 20 20" className="size-4 shrink-0 fill-warn-400">
+      <svg viewBox="0 0 20 20" className={`mt-0.5 size-4 shrink-0 ${ok ? 'fill-relief-400' : 'fill-warn-400'}`}>
         <path d="M10 1.8 1 17.5h18L10 1.8Zm0 4.6a.9.9 0 0 1 .9.9v4.4a.9.9 0 1 1-1.8 0V7.3a.9.9 0 0 1 .9-.9Zm0 8.9a1.05 1.05 0 1 1 0-2.1 1.05 1.05 0 0 1 0 2.1Z" />
       </svg>
-      <p className="font-mono text-[11px] leading-tight font-semibold tracking-wide text-warn-400">
-        RELATIVE HEIGHT — NOT METRIC
-        <span className="ml-2 font-sans font-normal text-slate-400">
-          Unitless 0–1 field. No georeferencing, no absolute elevation.
-        </span>
+      <p className={`font-mono text-[11px] leading-snug font-semibold tracking-wide ${ok ? 'text-relief-400' : 'text-warn-400'}`}>
+        {ok ? 'HEIGHT ABOVE GROUND · METRES' : 'ESTIMATED METRES · RESOLUTION UNCERTAIN'}
+        <span className="mt-0.5 block font-sans font-normal tracking-normal text-slate-400">{note}</span>
       </p>
     </div>
   )

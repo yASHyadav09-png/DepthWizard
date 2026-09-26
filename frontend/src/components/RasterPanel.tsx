@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ProcessResult } from '../types'
 import { Panel } from './ui'
 
-type LayerKey = 'original' | 'depth' | 'dsm'
+type LayerKey = 'original' | 'height' | 'hillshade'
 
 const LAYERS: {
   key: LayerKey
@@ -17,16 +17,16 @@ const LAYERS: {
     asset: (r) => r.assets.original,
   },
   {
-    key: 'depth',
-    label: 'Depth Map',
-    caption: 'Relative inverse depth · Depth Anything V2',
-    asset: (r) => r.assets.depth_map,
+    key: 'height',
+    label: 'Height Map (nDSM)',
+    caption: 'Predicted height above ground · metres',
+    asset: (r) => r.assets.height_map,
   },
   {
-    key: 'dsm',
-    label: 'Relative DSM',
-    caption: 'Normalised rDSM · shaded relief',
-    asset: (r) => r.assets.relative_dsm,
+    key: 'hillshade',
+    label: 'Shaded Relief',
+    caption: 'nDSM hillshade at true vertical scale',
+    asset: (r) => r.assets.hillshade,
   },
 ]
 

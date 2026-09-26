@@ -1,44 +1,76 @@
-/** Shapes returned by the DepthWizard Stage 1 backend. */
+/** Shapes returned by the DepthWizard backend (Phase 3: metric nDSM). */
 
 export interface TerrainGrid {
   width: number
   height: number
-  /** Row-major float32 little-endian heights in [0,1], base64 encoded. */
+  /** Row-major float32 little-endian heights in METRES, base64 encoded. */
   heights_b64: string
   encoding: string
   min_height: number
   max_height: number
   mean_height: number
   aspect_ratio: number
+  /** Footprint in metres (source pixels x gsd_m). */
   plane_width: number
   plane_depth: number
   source_width: number
   source_height: number
+  gsd_m: number
+  /** Colour-scale range in metres, shared by elevation mode, 2D map and legend. */
+  display_min: number
+  display_max: number
   height_units: string
 }
 
+export type MetricValidity = 'valid' | 'uncertain'
+
+/** Hand-off contract between the model side and the viewer (docs/phase3_demo.md). */
+export interface HeightProduct {
+  kind: 'ndsm' | 'dsm'
+  description: string
+  height_units: 'm'
+  width: number
+  height: number
+  height_array: string
+  gsd_m: number
+  gsd_source: 'user' | 'assumed_training_gsd' | 'geotiff'
+  metric_validity: MetricValidity
+  validity_note: string
+  nodata: unknown
+  crs: string | null
+  transform: number[] | null
+  vertical_datum: string | null
+  model: {
+    run: string
+    checkpoint_sha256: string
+    git_commit: string | null
+    val_rmse_m: number
+  }
+}
+
 export interface Statistics {
-  image_width: number
-  image_height: number
-  min_relative_height: number
-  max_relative_height: number
-  mean_relative_height: number
-  median_relative_height: number
-  std_relative_height: number
-  p05_relative_height: number
-  p95_relative_height: number
-  height_units: string
-  model_name: string
-  processing_device: string
+  min: number
+  max: number
+  mean: number
+  median: number
+  std: number
+  p05: number
+  p95: number
+  p99: number
+  frac_above_2m: number
+  units: string
+  display_min: number
+  display_max: number
   is_metric: boolean
+  metric_validity: MetricValidity
   georeferenced: boolean
 }
 
 export interface Assets {
   original: string
   texture: string
-  depth_map: string
-  relative_dsm: string
+  height_map: string
+  hillshade: string
   height_array: string
 }
 
@@ -53,17 +85,21 @@ export interface ProcessResult {
     bytes: number
     width: number
     height: number
-    inference_width: number
-    inference_height: number
   }
   model: {
     name: string
+    run: string
     checkpoint: string
+    checkpoint_sha256: string
+    epoch: number
+    val_rmse_m: number
+    git_commit: string | null
     type: string
     precision: string
     device: string
     device_label: string
   }
+  height_product: HeightProduct
   statistics: Statistics
   assets: Assets
   terrain: TerrainGrid

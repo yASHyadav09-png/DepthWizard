@@ -11,6 +11,8 @@ export function UploadPanel({
   previewUrl,
   stage,
   maxUploadMb,
+  gsd,
+  onGsd,
   onSelect,
   onGenerate,
   onReset,
@@ -19,6 +21,8 @@ export function UploadPanel({
   previewUrl: string | null
   stage: PipelineStage
   maxUploadMb: number | null
+  gsd: string
+  onGsd: (value: string) => void
   onSelect: (file: File, localError: string | null) => void
   onGenerate: () => void
   onReset: () => void
@@ -34,7 +38,7 @@ export function UploadPanel({
       const okType = /^image\/(jpeg|png)$/i.test(candidate.type)
       const okExt = /\.(jpe?g|png)$/i.test(candidate.name)
       if (!okType && !okExt) {
-        onSelect(candidate, 'Stage 1 accepts JPG and PNG images only.')
+        onSelect(candidate, 'JPG and PNG images only (GeoTIFF arrives in Phase 5).')
         return
       }
       if (candidate.size > limitMb * 1024 * 1024) {
@@ -112,7 +116,7 @@ export function UploadPanel({
               Drop a JPG or PNG, or click to browse
             </p>
             <p className="mt-1 font-mono text-[11px] text-slate-500">
-              Non-georeferenced imagery · max {limitMb} MB
+              Top-down aerial / satellite image · max {limitMb} MB
             </p>
           </div>
         )}
@@ -127,6 +131,28 @@ export function UploadPanel({
           }}
         />
       </div>
+
+      <label className="block">
+        <span className="text-[11px] text-slate-400">
+          Ground resolution <span className="text-slate-600">(m / pixel, optional)</span>
+        </span>
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0.01}
+          max={100}
+          step={0.01}
+          value={gsd}
+          disabled={busy}
+          onChange={(event) => onGsd(event.target.value)}
+          placeholder="unknown: assume 0.33 (training resolution)"
+          className="mt-1 w-full rounded-lg border border-slate-400/20 bg-slate-400/5 px-3 py-2 font-mono text-xs text-slate-200 placeholder:text-slate-600 focus:border-signal-400/50 focus:outline-none disabled:opacity-50"
+        />
+        <span className="mt-1 block text-[10px] leading-snug text-slate-600">
+          The model was trained on ~0.33 m/px aerial imagery. Other resolutions give
+          less reliable heights until Phase 4.
+        </span>
+      </label>
 
       <div className="flex gap-2">
         <button

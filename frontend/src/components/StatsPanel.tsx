@@ -1,6 +1,6 @@
 import type { ProcessResult } from '../types'
 import { assetUrl } from '../services/api'
-import { Panel, RelativeHeightNotice } from './ui'
+import { MetricNotice, Panel } from './ui'
 
 function Row({
   label,
@@ -49,35 +49,39 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
   }
 
   const s = result.statistics
-  const fmt = (value: number) => value.toFixed(4)
+  const hp = result.height_product
+  const m = (value: number) => `${value.toFixed(2)} m`
 
   return (
     <Panel title="Statistics" bodyClassName="space-y-3 p-4">
-      <RelativeHeightNotice />
+      <MetricNotice validity={hp.metric_validity} note={hp.validity_note} />
 
       <div className="grid grid-cols-3 gap-2">
-        <Tile label="Min" value={fmt(s.min_relative_height)} />
-        <Tile label="Mean" value={fmt(s.mean_relative_height)} />
-        <Tile label="Max" value={fmt(s.max_relative_height)} />
+        <Tile label="Median" value={m(s.median)} />
+        <Tile label="P95" value={m(s.p95)} />
+        <Tile label="Max" value={m(s.max)} />
       </div>
 
       <div>
+        <Row label="Image" value={`${result.source.width} × ${result.source.height} px`} />
         <Row
-          label="Image dimensions"
-          value={`${s.image_width} × ${s.image_height} px`}
+          label="Ground resolution"
+          value={`${hp.gsd_m} m/px${hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}`}
         />
-        <Row label="Median relative height" value={fmt(s.median_relative_height)} />
-        <Row label="Std. deviation" value={fmt(s.std_relative_height)} />
         <Row
-          label="P05 – P95 range"
-          value={`${fmt(s.p05_relative_height)} – ${fmt(s.p95_relative_height)}`}
+          label="Footprint"
+          value={`${result.terrain.plane_width.toFixed(0)} × ${result.terrain.plane_depth.toFixed(0)} m`}
         />
-        <Row label="Height units" value={s.height_units} />
-        <Row label="Model" value={s.model_name} accent />
-        <Row label="Processing device" value={s.processing_device} accent />
-        <Row label="Terrain grid" value={`${result.terrain.width} × ${result.terrain.height}`} />
-        <Row label="Georeferenced" value={s.georeferenced ? 'yes' : 'no'} />
-        <Row label="Metric" value={s.is_metric ? 'yes' : 'no'} />
+        <Row label="Mean height" value={m(s.mean)} />
+        <Row label="P05 – P99" value={`${s.p05.toFixed(2)} – ${s.p99.toFixed(2)} m`} />
+        <Row label="Area above 2 m" value={`${(s.frac_above_2m * 100).toFixed(1)} %`} />
+        <Row label="Product" value={`${hp.kind.toUpperCase()} · ${hp.description}`} />
+        <Row label="Model" value={result.model.name} accent />
+        <Row label="Model run / epoch" value={`${result.model.run} / ${result.model.epoch}`} />
+        <Row label="Checkpoint sha256" value={result.model.checkpoint_sha256.slice(0, 16) + '…'} />
+        <Row label="Val RMSE (GAMUS)" value={m(result.model.val_rmse_m)} />
+        <Row label="Processing device" value={result.model.device_label} accent />
+        <Row label="Georeferenced" value={s.georeferenced ? 'yes' : 'no (Phase 5)'} />
         <Row label="Job ID" value={result.job_id} />
       </div>
 
@@ -87,7 +91,7 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
           download
           className="rounded-md border border-slate-400/20 px-2.5 py-1.5 font-mono text-[10px] tracking-wide text-slate-400 uppercase transition hover:border-signal-400/40 hover:text-signal-300"
         >
-          ↓ height .npy
+          ↓ nDSM .npy (m)
         </a>
         <a
           href={assetUrl(`/static/${result.job_id}/metadata.json`)}

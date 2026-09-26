@@ -54,7 +54,7 @@ export function ViewerControls({
       />
       <Toggle
         label="Elevation view"
-        hint="Colour the surface by relative height instead of RGB"
+        hint="Colour the surface by height above ground (m) instead of RGB"
         checked={viewMode === 'elevation'}
         disabled={!enabled}
         onChange={(next) => onViewMode(next ? 'elevation' : 'textured')}
@@ -71,11 +71,11 @@ export function ViewerControls({
         label="Height exaggeration"
         value={exaggeration}
         min={0}
-        max={1.2}
-        step={0.01}
+        max={5}
+        step={0.1}
         disabled={!enabled}
         onChange={onExaggeration}
-        format={(v) => `${v.toFixed(2)}×`}
+        format={(v) => `${v.toFixed(1)}×`}
       />
 
       <button
@@ -88,9 +88,9 @@ export function ViewerControls({
       </button>
 
       <p className="text-[10px] leading-relaxed text-slate-600">
-        Exaggeration is a <span className="text-slate-500">visual</span> scale on a
-        unitless 0–1 field. It does not represent metres and does not change the
-        underlying rDSM.
+        At <span className="text-slate-500">1×</span> the terrain is at true scale:
+        heights and ground distances are both in metres. Exaggeration is only a
+        visual aid; the height readout and statistics always show real metres.
       </p>
     </Panel>
   )

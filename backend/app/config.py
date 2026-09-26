@@ -1,7 +1,7 @@
 """Central configuration for the DepthWizard backend.
 
-Every tunable lives here so later stages (GAMUS semantics, SRTM/GCP scaling,
-GeoTIFF IO) can register their own settings in one place.
+Every tunable lives here so later phases (resolution handling, DEM/GCP
+calibration, GeoTIFF IO) can register their own settings in one place.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+REPO_ROOT = BASE_DIR.parent
 
 
 def _env(name: str, default: str) -> str:
@@ -20,14 +21,15 @@ class Settings:
     """Runtime settings, overridable through environment variables."""
 
     APP_NAME = "DepthWizard"
-    APP_STAGE = "Stage 1 - Relative Height / Relative DSM"
-    VERSION = "0.1.0"
+    APP_STAGE = "Phase 3 - metric nDSM from the trained DA-V2-S model"
+    VERSION = "0.3.0"
 
     # --- Model -----------------------------------------------------------
-    # Hugging Face Transformers port of Depth Anything V2 Small.
-    MODEL_NAME = _env("DW_MODEL_NAME", "depth-anything/Depth-Anything-V2-Small-hf")
-    MODEL_LABEL = "Depth Anything V2 Small"
-    # "auto" -> cuda when available, otherwise cpu. Can be forced to cpu/cuda.
+    # A Phase 2 training run; its checkpoints/best.pt is loaded. Default: the
+    # kept Phase 2b model (see docs/phase2b_results.md).
+    RUN_DIR = Path(_env("DW_RUN_DIR", str(REPO_ROOT / "runs" / "20260926-003630_phase2b_partial")))
+    MODEL_LABEL = "DepthWizard nDSM (Depth Anything V2 Small, fine-tuned on GAMUS)"
+    # "auto" -> cuda when available, otherwise cpu.
     DEVICE = _env("DW_DEVICE", "auto")
     # Load the model at server startup instead of on first request.
     PRELOAD_MODEL = _env("DW_PRELOAD_MODEL", "1") == "1"
@@ -37,17 +39,18 @@ class Settings:
     STATIC_URL_PREFIX = "/static"
 
     # --- Upload limits ---------------------------------------------------
-    MAX_UPLOAD_BYTES = int(_env("DW_MAX_UPLOAD_MB", "25")) * 1024 * 1024
+    MAX_UPLOAD_BYTES = int(_env("DW_MAX_UPLOAD_MB", "40")) * 1024 * 1024
     ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png"}
     ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
-    # Longest side fed to the network. Depth Anything internally resizes to
-    # 518px, so anything beyond this only costs memory.
-    MAX_INFERENCE_SIDE = int(_env("DW_MAX_INFERENCE_SIDE", "1536"))
+    # Inference runs at native resolution (never downscaled: the model is
+    # trained at a fixed ground resolution), in overlapping 1024 px windows.
+    # This caps the work per request.
+    MAX_INFERENCE_PIXELS = int(_env("DW_MAX_INFERENCE_PIXELS", str(40_000_000)))
     # Longest side of the RGB texture handed to the 3D viewer.
     MAX_TEXTURE_SIDE = int(_env("DW_MAX_TEXTURE_SIDE", "2048"))
 
     # --- Terrain ---------------------------------------------------------
-    TERRAIN_RESOLUTION = int(_env("DW_TERRAIN_RESOLUTION", "256"))
+    TERRAIN_RESOLUTION = int(_env("DW_TERRAIN_RESOLUTION", "512"))
 
     # --- CORS ------------------------------------------------------------
     CORS_ORIGINS = _env(

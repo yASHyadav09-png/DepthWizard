@@ -1,14 +1,16 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { FlyControls, Grid, Html, OrbitControls } from '@react-three/drei'
+import { FlyControls, Grid, OrbitControls, useProgress } from '@react-three/drei'
 import type { ProcessResult, ViewMode } from '../types'
 import { assetUrl } from '../services/api'
-import { TerrainMesh } from './TerrainMesh'
+import { RAMP, TerrainMesh } from './TerrainMesh'
+import type { HoverInfo } from './TerrainMesh'
 import { Badge } from './ui'
 
-/** The mesh is built at unit scale; the scene scales it once so camera
- *  distances and fly speeds are the same for every image. */
-const WORLD_SCALE = 4
+/** The mesh is built in metres; the scene scales it UNIFORMLY so its longest
+ *  side spans WORLD_SIZE units. Proportions (height vs footprint) stay true, and
+ *  camera distances and fly speeds are the same for every image. */
+const WORLD_SIZE = 4
 const CAMERA_HOME: [number, number, number] = [1.7, 2.5, 2.9]
 const CAMERA_TARGET: [number, number, number] = [0, 0.35, 0]
 
@@ -46,14 +48,40 @@ function CameraRig({ resetSignal }: { resetSignal: number }) {
   return null
 }
 
-function Loader({ label }: { label: string }) {
+/** Colour scale of the elevation mode, in metres (same range as the 2D height map). */
+function HeightLegend({ min, max }: { min: number; max: number }) {
+  const stops = RAMP.map(
+    ([t, [r, g, b]]) => `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)}) ${t * 100}%`,
+  ).join(', ')
   return (
-    <Html center>
+    <div className="pointer-events-none absolute bottom-3 left-3 w-48 rounded-lg border border-slate-400/12 bg-abyss-950/80 px-2.5 py-2 backdrop-blur">
+      <p className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">Height above ground</p>
+      <div className="mt-1.5 h-2 rounded-sm" style={{ background: `linear-gradient(to right, ${stops})` }} />
+      <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-300">
+        <span>{min.toFixed(0)} m</span>
+        <span>{((min + max) / 2).toFixed(0)} m</span>
+        <span>≥{max.toFixed(0)} m</span>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Loading indicator as a plain DOM overlay OUTSIDE the canvas. (drei's <Html>
+ * as a Suspense fallback mounts a separate React root, and unmounting it when
+ * the texture resolves happens mid-render under React 19, which aborts the
+ * commit and leaves the terrain unmounted.)
+ */
+function Loader({ label }: { label: string }) {
+  const { active } = useProgress()
+  if (!active) return null
+  return (
+    <div className="pointer-events-none absolute inset-0 grid place-items-center">
       <div className="flex items-center gap-2 rounded-lg border border-slate-400/20 bg-abyss-900/90 px-3 py-2">
         <span className="size-3 animate-spin rounded-full border-2 border-signal-400 border-t-transparent" />
         <span className="font-mono text-[11px] text-slate-300">{label}</span>
       </div>
-    </Html>
+    </div>
   )
 }
 
@@ -75,8 +103,8 @@ function EmptyState() {
           No terrain generated yet
         </p>
         <p className="mt-1 max-w-sm text-xs text-slate-600">
-          Upload a JPG or PNG and run the pipeline. The relative DSM is meshed into an
-          interactive 3D surface with the original image projected as texture.
+          Upload a top-down aerial image and run the pipeline. The predicted height above
+          ground (metres) is meshed into a 3D surface with the image projected as texture.
         </p>
       </div>
     </div>
@@ -98,7 +126,13 @@ export function TerrainViewer({
   navMode: NavMode
   resetSignal: number
 }) {
+  const [hover, setHover] = useState<HoverInfo | null>(null)
   if (!result) return <EmptyState />
+
+  const grid = result.terrain
+  const hp = result.height_product
+  const worldScale = WORLD_SIZE / Math.max(grid.plane_width, grid.plane_depth)
+  const valid = hp.metric_validity === 'valid'
 
   return (
     <div className="relative size-full">
@@ -126,14 +160,15 @@ export function TerrainViewer({
         <hemisphereLight args={['#bfdbfe', '#0b1220', 0.7]} />
         <ambientLight intensity={0.55} />
 
-        <Suspense fallback={<Loader label="Building terrain mesh…" />}>
-          <group scale={WORLD_SCALE}>
+        <Suspense fallback={null}>
+          <group scale={worldScale}>
             <TerrainMesh
-              grid={result.terrain}
+              grid={grid}
               textureUrl={assetUrl(result.assets.texture)}
               viewMode={viewMode}
               wireframe={wireframe}
               exaggeration={exaggeration}
+              onHover={setHover}
             />
           </group>
         </Suspense>
@@ -177,12 +212,35 @@ export function TerrainViewer({
         )}
       </Canvas>
 
+      <Loader label="Building terrain mesh…" />
+
       <div className="pointer-events-none absolute top-3 left-3 flex flex-wrap gap-2">
-        <Badge tone="warn">Relative Height — Not Metric</Badge>
-        <Badge tone="neutral">
-          {result.terrain.width}×{result.terrain.height} grid
+        <Badge tone={valid ? 'relief' : 'warn'}>
+          {valid ? 'Height above ground · m' : 'Estimated m · resolution uncertain'}
         </Badge>
+        <Badge tone="neutral">
+          {grid.gsd_m} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
+        </Badge>
+        <Badge tone="neutral">
+          {Math.round(grid.plane_width)} × {Math.round(grid.plane_depth)} m
+        </Badge>
+        {exaggeration !== 1 && <Badge tone="neutral">{exaggeration.toFixed(1)}× vertical</Badge>}
       </div>
+
+      <div className="pointer-events-none absolute top-11 left-3 rounded-lg border border-slate-400/12 bg-abyss-950/80 px-2.5 py-1.5 font-mono text-[11px] backdrop-blur">
+        {hover ? (
+          <>
+            <span className="text-slate-100">{hover.heightM.toFixed(1)} m</span>
+            <span className="text-slate-500"> above ground · at ({hover.xM.toFixed(0)}, {hover.yM.toFixed(0)}) m</span>
+          </>
+        ) : (
+          <span className="text-slate-500">hover the terrain to read its height</span>
+        )}
+      </div>
+
+      {viewMode === 'elevation' && (
+        <HeightLegend min={grid.display_min} max={grid.display_max} />
+      )}
 
       <div className="pointer-events-none absolute right-3 bottom-3 rounded-lg border border-slate-400/12 bg-abyss-950/80 px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-slate-500 backdrop-blur">
         {navMode === 'orbit' ? (

@@ -1,96 +1,69 @@
-"""Unit tests for the pure-numpy half of the pipeline (no model download)."""
+"""Unit tests for the pure-numpy half of the pipeline (no model)."""
 
 import base64
 
 import numpy as np
 import pytest
 
-from app.services import depth_processor, terrain_generator
+from app.services import height_processor, terrain_generator
 from app.utils import errors, image_io
 from tests.conftest import make_image_bytes
 
 
-# --- depth_processor -----------------------------------------------------
-def test_normalize_maps_to_unit_range():
-    depth = np.linspace(-5.0, 12.0, 400, dtype=np.float32).reshape(20, 20)
-    out = depth_processor.normalize(depth)
-    assert out.dtype == np.float32
-    assert out.min() == pytest.approx(0.0, abs=1e-6)
-    assert out.max() == pytest.approx(1.0, abs=1e-6)
+# --- height_processor ----------------------------------------------------
+def building_scene(h=120, w=160, height_m=15.0):
+    f = np.zeros((h, w), np.float32)
+    f[40:80, 50:110] = height_m
+    return f
 
 
-def test_normalize_handles_flat_and_nonfinite_input():
-    flat = np.full((8, 8), 3.0, dtype=np.float32)
-    assert depth_processor.normalize(flat).max() == 0.0
-
-    noisy = np.array([[1.0, np.nan], [np.inf, 2.0]], dtype=np.float32)
-    out = depth_processor.normalize(noisy)
-    assert np.isfinite(out).all()
+def test_stats_are_in_metres():
+    s = height_processor.compute_stats(building_scene())
+    assert s.units == "m" and s.min == 0.0 and s.max == 15.0
+    assert s.frac_above_2m == pytest.approx(40 * 60 / (120 * 160))
 
 
-def test_inverse_depth_is_used_as_height_directly():
-    depth = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
-    inverse = depth_processor.to_relative_height(depth, is_inverse_depth=True)
-    metric = depth_processor.to_relative_height(depth, is_inverse_depth=False)
-    # Near the camera (large inverse depth) must read as tall.
-    assert inverse[1, 1] > inverse[0, 0]
-    assert metric[1, 1] < metric[0, 0]
+def test_stats_and_colours_survive_nonfinite_values():
+    f = building_scene(); f[0, 0] = np.nan; f[1, 1] = np.inf
+    assert np.isfinite(list(height_processor.compute_stats(f).to_dict().values())[:-1]).all()
+    assert height_processor.colorize(f, 0, 15).size == (160, 120)
 
 
-def test_stats_are_relative_and_consistent():
-    field = np.linspace(0.0, 1.0, 100, dtype=np.float32).reshape(10, 10)
-    stats = depth_processor.compute_stats(field)
-    assert stats.min == pytest.approx(0.0)
-    assert stats.max == pytest.approx(1.0)
-    assert 0.0 < stats.mean < 1.0
-    assert "relative" in stats.units
-    assert "metre" not in stats.units and "meter" not in stats.units
+def test_display_range_has_a_floor():
+    assert height_processor.display_range(np.zeros((10, 10))) == (0.0, 5.0)
+    lo, hi = height_processor.display_range(building_scene(height_m=40.0))
+    assert lo == 0.0 and hi == pytest.approx(40.0)
 
 
 def test_visualisations_render_rgb_images():
-    field = np.random.default_rng(0).random((32, 48)).astype(np.float32)
-    depth_png = depth_processor.colorize(field, "inferno")
-    dsm_png = depth_processor.hillshaded_dsm(field)
-    assert depth_png.size == (48, 32) and depth_png.mode == "RGB"
-    assert dsm_png.size == (48, 32) and dsm_png.mode == "RGB"
-    # A colour map must not collapse to a single flat colour.
-    assert len(set(depth_png.getdata())) > 10
+    f = building_scene()
+    for img in (height_processor.colorize(f, 0, 15), height_processor.hillshade(f, 0.33, 0, 15)):
+        assert img.mode == "RGB" and img.size == (160, 120)
 
 
 # --- terrain_generator ---------------------------------------------------
+def test_terrain_keeps_metres_and_true_footprint():
+    t = terrain_generator.generate_terrain(building_scene(), 0.5, (0.0, 15.0), resolution=512)
+    heights = np.frombuffer(base64.b64decode(t.heights_b64), dtype="<f4").reshape(t.height, t.width)
+    assert (t.width, t.height) == (160, 120) and heights.max() == pytest.approx(15.0)
+    assert t.plane_width == pytest.approx(80.0) and t.plane_depth == pytest.approx(60.0)
+    assert t.height_units == "m" and t.gsd_m == 0.5
+
+
 def test_terrain_downsamples_and_preserves_aspect():
-    field = np.random.default_rng(1).random((600, 900)).astype(np.float32)
-    grid = terrain_generator.generate_terrain(field, resolution=256)
-    assert grid.width == 256
-    assert grid.height == 171          # 256 * 600/900
-    assert grid.aspect_ratio == pytest.approx(1.5)
-    assert grid.plane_width == pytest.approx(1.0)
-    assert grid.plane_depth == pytest.approx(1 / 1.5)
+    t = terrain_generator.generate_terrain(np.zeros((1600, 2400), np.float32), 0.33, (0, 5), resolution=512)
+    assert (t.width, t.height) == (512, 341)
+    assert np.frombuffer(base64.b64decode(t.heights_b64), dtype="<f4").size == 512 * 341
 
 
-def test_terrain_buffer_decodes_to_the_declared_shape():
-    field = np.random.default_rng(2).random((200, 200)).astype(np.float32)
-    grid = terrain_generator.generate_terrain(field, resolution=64)
-    raw = base64.b64decode(grid.heights_b64)
-    heights = np.frombuffer(raw, dtype="<f4")
-    assert heights.size == grid.width * grid.height
-    assert np.isfinite(heights).all()
-    assert heights.min() >= 0.0 and heights.max() <= 1.0
-
-
-def test_terrain_keeps_real_relief():
-    """A ramp must survive downsampling - the mesh has to actually be 3D."""
-    ramp = np.tile(np.linspace(0, 1, 256, dtype=np.float32), (256, 1))
-    grid = terrain_generator.generate_terrain(ramp, resolution=128)
-    assert grid.max_height - grid.min_height > 0.8
-
-
-def test_terrain_rejects_non_2d_input():
+def test_terrain_rejects_bad_input():
     with pytest.raises(ValueError):
-        terrain_generator.generate_terrain(np.zeros((4, 4, 3), dtype=np.float32))
+        terrain_generator.generate_terrain(np.zeros((3, 4, 5)), 0.33, (0, 5))
+    with pytest.raises(ValueError):
+        terrain_generator.generate_terrain(np.zeros((30, 40)), 0.0, (0, 5))
 
 
-# --- image_io ------------------------------------------------------------
+# --- image_io --------------------------------------------------------------
 def test_rejects_empty_and_corrupt_uploads():
     with pytest.raises(errors.InvalidImageError):
         image_io.validate_upload("a.png", "image/png", b"")

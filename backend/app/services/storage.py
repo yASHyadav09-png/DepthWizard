@@ -17,9 +17,9 @@ JOB_ID_RE = re.compile(r"^[0-9a-f]{12}$")
 
 ORIGINAL_PNG = "original.png"
 TEXTURE_JPG = "texture.jpg"
-DEPTH_PNG = "depth_visualization.png"
-DSM_PNG = "relative_dsm.png"
-HEIGHT_NPY = "relative_height.npy"
+HEIGHT_PNG = "ndsm_colour.png"
+HILLSHADE_PNG = "ndsm_hillshade.png"
+HEIGHT_NPY = "ndsm_m.npy"
 METADATA_JSON = "metadata.json"
 
 

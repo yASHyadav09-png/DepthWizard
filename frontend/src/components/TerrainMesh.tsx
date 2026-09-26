@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useTexture } from '@react-three/drei'
+import type { ThreeEvent } from '@react-three/fiber'
 import type { TerrainGrid, ViewMode } from '../types'
 import { decodeHeights } from '../services/terrain'
 
-/** Elevation ramp used for the "elevation" view mode (low -> high). */
-const RAMP: [number, [number, number, number]][] = [
+/** Elevation ramp used for the "elevation" view mode and its legend (low -> high). */
+export const RAMP: [number, [number, number, number]][] = [
   [0.0, [0.10, 0.16, 0.36]],
   [0.2, [0.11, 0.38, 0.52]],
   [0.4, [0.13, 0.55, 0.42]],
@@ -26,14 +27,22 @@ function rampColor(t: number, out: [number, number, number]) {
   out[2] = c0[2] + (c1[2] - c0[2]) * f
 }
 
+/** What the cursor is over: height above ground (m) and ground position (m from top-left). */
+export interface HoverInfo {
+  heightM: number
+  xM: number
+  yM: number
+}
+
 interface BuiltGeometry {
   geometry: THREE.BufferGeometry
   baseHeights: Float32Array
 }
 
 /**
- * Build the terrain surface by hand rather than displacing a PlaneGeometry:
- * it keeps the UV orientation, the winding and the height lookup in one place.
+ * Build the terrain surface in METRES: x/z span the ground footprint
+ * (pixels x ground resolution) and y is the predicted height above ground, so
+ * the scene has true proportions before any exaggeration.
  *
  * Grid row 0 is the TOP of the source image. It is placed at -Z and given
  * v = 1 so the RGB texture (loaded with flipY) lands the right way up.
@@ -41,6 +50,7 @@ interface BuiltGeometry {
 function buildGeometry(grid: TerrainGrid): BuiltGeometry {
   const { width: w, height: h, plane_width: pw, plane_depth: pd } = grid
   const heights = decodeHeights(grid)
+  const range = Math.max(grid.display_max - grid.display_min, 1e-6)
 
   const count = w * h
   const positions = new Float32Array(count * 3)
@@ -61,7 +71,7 @@ function buildGeometry(grid: TerrainGrid): BuiltGeometry {
       uvs[index * 2] = u
       uvs[index * 2 + 1] = 1 - v
 
-      rampColor(heights[index], rgb)
+      rampColor((heights[index] - grid.display_min) / range, rgb)
       colors[index * 3] = rgb[0]
       colors[index * 3 + 1] = rgb[1]
       colors[index * 3 + 2] = rgb[2]
@@ -70,8 +80,7 @@ function buildGeometry(grid: TerrainGrid): BuiltGeometry {
 
   // Two triangles per cell, wound so the surface normal points up (+Y).
   const quads = (w - 1) * (h - 1)
-  const indices =
-    count > 65535 ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6)
+  const indices = count > 65535 ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6)
   let k = 0
   for (let j = 0; j < h - 1; j += 1) {
     for (let i = 0; i < w - 1; i += 1) {
@@ -104,12 +113,14 @@ export function TerrainMesh({
   viewMode,
   wireframe,
   exaggeration,
+  onHover,
 }: {
   grid: TerrainGrid
   textureUrl: string
   viewMode: ViewMode
   wireframe: boolean
   exaggeration: number
+  onHover?: (info: HoverInfo | null) => void
 }) {
   const texture = useTexture(textureUrl)
   const meshRef = useRef<THREE.Mesh>(null)
@@ -138,12 +149,39 @@ export function TerrainMesh({
     geometry.computeBoundingSphere()
   }, [geometry, baseHeights, exaggeration])
 
+  // Cursor readout: map the hit point back to the grid and report the TRUE
+  // (un-exaggerated) predicted height of the nearest grid cell.
+  const handleMove = (event: ThreeEvent<PointerEvent>) => {
+    if (!onHover || !meshRef.current) return
+    const local = meshRef.current.worldToLocal(event.point.clone())
+    const u = local.x / grid.plane_width + 0.5
+    const v = local.z / grid.plane_depth + 0.5
+    if (u < 0 || u > 1 || v < 0 || v > 1) return onHover(null)
+    const i = Math.round(u * (grid.width - 1))
+    const j = Math.round(v * (grid.height - 1))
+    onHover({
+      heightM: baseHeights[j * grid.width + i],
+      xM: u * grid.plane_width,
+      yM: v * grid.plane_depth,
+    })
+  }
+
   const textured = viewMode === 'textured'
 
   return (
     <group>
-      <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow>
+      <mesh
+        ref={meshRef}
+        geometry={geometry}
+        castShadow
+        receiveShadow
+        onPointerMove={handleMove}
+        onPointerOut={() => onHover?.(null)}
+      >
+        {/* keyed by mode: three.js does not recompile the shader when
+            `vertexColors`/`map` change on an existing material */}
         <meshStandardMaterial
+          key={viewMode}
           map={textured ? texture : null}
           vertexColors={!textured}
           roughness={textured ? 0.82 : 0.7}
@@ -155,13 +193,7 @@ export function TerrainMesh({
 
       {wireframe && (
         <mesh geometry={geometry}>
-          <meshBasicMaterial
-            color="#38bdf8"
-            wireframe
-            transparent
-            opacity={0.12}
-            depthTest
-          />
+          <meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.12} depthTest />
         </mesh>
       )}
     </group>

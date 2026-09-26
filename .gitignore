@@ -60,3 +60,6 @@ runs/*_smoke/
 .env
 *.token
 .huggingface/
+
+# demo samples exported from GAMUS val (regenerate: python scripts/export_demo_samples.py)
+sample_data/gamus_val/

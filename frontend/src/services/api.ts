@@ -40,10 +40,12 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
 
 export async function processImage(
   file: File,
+  gsdM: number | null,
   signal?: AbortSignal,
 ): Promise<ProcessResult> {
   const form = new FormData()
   form.append('image', file)
+  if (gsdM !== null) form.append('gsd_m', String(gsdM))
 
   let response: Response
   try {

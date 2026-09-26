@@ -1,7 +1,8 @@
 """DepthWizard backend entrypoint.
 
 SIH 2026 - PS 26175 (ISRO): Single-View Height Estimation and 3D Flythrough.
-Stage 1: relative height / relative DSM from non-georeferenced JPG/PNG.
+Phase 3: metric nDSM (height above ground, metres) from JPG/PNG with the
+trained DA-V2-S model (see docs/phase3_demo.md).
 
     uvicorn app.main:app --reload --port 8000
 """
@@ -19,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.config import settings
-from app.services.depth_estimator import get_depth_estimator
+from app.services.height_estimator import get_height_estimator
 from app.utils.errors import DepthWizardError
 
 logging.basicConfig(
@@ -32,7 +33,7 @@ logger = logging.getLogger("depthwizard")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    estimator = get_depth_estimator()
+    estimator = get_height_estimator()
     logger.info("%s %s - %s", settings.APP_NAME, settings.VERSION, settings.APP_STAGE)
     logger.info("Inference device: %s", estimator.device_label)
     if settings.PRELOAD_MODEL:
@@ -40,7 +41,7 @@ async def lifespan(app: FastAPI):
             estimator.load()
         except DepthWizardError as exc:
             # Don't kill the server: /api/health still reports the failure and
-            # the next request retries the download.
+            # the next request retries the load.
             logger.error("Model preload failed: %s", exc.message)
     yield
     logger.info("DepthWizard shutting down.")
@@ -49,8 +50,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="DepthWizard API",
     description=(
-        "Single-view relative height estimation (SIH 2026, PS 26175 / ISRO). "
-        "Stage 1 produces RELATIVE, NON-METRIC height only."
+        "Single-view height estimation (SIH 2026, PS 26175 / ISRO). "
+        "Phase 3 predicts nDSM (height above ground, metres); not yet georeferenced."
     ),
     version=settings.VERSION,
     lifespan=lifespan,
@@ -83,7 +84,7 @@ async def validation_error_handler(_: Request, exc: RequestValidationError) -> J
         status_code=422,
         content={
             "error": "invalid_request",
-            "detail": "Expected a multipart form with an 'image' file field.",
+            "detail": "Expected a multipart form with an 'image' file field (and optional numeric 'gsd_m').",
             "errors": exc.errors(),
         },
     )
@@ -114,7 +115,7 @@ def root() -> dict:
         "version": settings.VERSION,
         "stage": settings.APP_STAGE,
         "problem_statement": "SIH 2026 - 26175 (ISRO)",
-        "output": "Relative Height / Relative DSM - NOT metric, NOT georeferenced",
+        "output": "nDSM: height above ground in metres (not georeferenced yet)",
         "docs": "/docs",
         "endpoints": ["/api/health", "/api/process", "/api/results/{job_id}"],
     }

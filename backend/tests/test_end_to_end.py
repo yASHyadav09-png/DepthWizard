@@ -1,5 +1,5 @@
-"""Real Depth Anything V2 inference. Skipped unless DW_RUN_MODEL_TESTS=1
-(the first run downloads ~100 MB of weights).
+"""Real inference with the trained Phase 2b model. Skipped unless DW_RUN_MODEL_TESTS=1
+(needs the checkpoint under runs/ and, ideally, a GPU).
 
     DW_RUN_MODEL_TESTS=1 pytest tests/test_end_to_end.py -v
 """
@@ -16,18 +16,13 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_real_pipeline_produces_relief(jpg_bytes):
+def test_real_pipeline_produces_metric_heights(jpg_bytes):
     from app.services.pipeline import run_pipeline
 
     payload = run_pipeline(jpg_bytes, "scene.jpg", "image/jpeg")
-
     assert payload["status"] == "completed"
-    assert payload["model"]["checkpoint"] == "depth-anything/Depth-Anything-V2-Small-hf"
-    assert payload["statistics"]["is_metric"] is False
-
-    heights = np.frombuffer(
-        base64.b64decode(payload["terrain"]["heights_b64"]), dtype="<f4"
-    )
-    assert np.isfinite(heights).all()
-    # A real depth map is never a constant plane.
-    assert heights.std() > 0.01
+    assert payload["height_product"]["kind"] == "ndsm"
+    assert payload["height_product"]["height_units"] == "m"
+    assert len(payload["model"]["checkpoint_sha256"]) == 64
+    heights = np.frombuffer(base64.b64decode(payload["terrain"]["heights_b64"]), dtype="<f4")
+    assert np.isfinite(heights).all() and (heights >= 0).all()
