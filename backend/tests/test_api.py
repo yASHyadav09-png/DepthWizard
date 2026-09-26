@@ -210,3 +210,20 @@ def test_validation_rejects_wrong_grid_and_garbage(client, png_bytes):
     assert r.status_code == 400
     assert client.post("/api/results/ffffffffffff/validate",
                        files={"reference": ("r.npy", _npy(np.zeros((5, 5))), "x")}).status_code == 404
+
+
+def test_phase4_decision_inference_runs_on_native_pixels(client, stub_model, monkeypatch):
+    """Phase 4 closure: production uses DIRECT inference. The model must receive the
+    uploaded pixels unchanged (never resampled to 0.33 m/px), whatever gsd_m says."""
+    seen = []
+    original = stub_model.predict
+
+    def spy(rgb):
+        seen.append(rgb.shape)
+        return original(rgb)
+
+    monkeypatch.setattr(stub_model, "predict", spy)
+    for gsd in (None, 0.33, 0.6, 1.0):
+        form = {} if gsd is None else {"gsd_m": gsd}
+        assert post(client, make_image_bytes(300, 200), name="s.png", **form).status_code == 200
+    assert seen == [(200, 300, 3)] * 4

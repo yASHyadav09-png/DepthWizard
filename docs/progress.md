@@ -6,9 +6,9 @@
 | 1 Baselines (B0 trivial, B1 DA-V2-S + global calibration, B2 oracle per-image calibration) | **done** 2026-09-25 | reproducible val metrics + figures (bit-identical rerun) |
 | 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **done** 2026-09-26: 2b kept (pre-registered rule) | beats B1 on val; one test run |
 | 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | **done** 2026-09-26 | web path = evaluated model (Δ 1e-13 m); large images tiled; 3D in metres |
-| 4 Resolution/GSD handling + GCP correction | **study done** 2026-09-26 (val); remedy awaiting decision | GSD study in results.csv |
-| 5 Absolute DSM (DEM, CRS, vertical datum) | | valid GeoTIFF out, correct in QGIS |
-| 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) | | per-landscape metrics |
+| 4 Resolution/GSD handling | **closed** 2026-09-26 (study done; GCP -> Phase 5, scale-aug fine-tune -> Phase 6) | GSD study in results.csv |
+| 5 Absolute DSM (DEM, CRS, vertical datum) + GCP correction | not started (plan pending approval) | valid GeoTIFF out, correct in QGIS |
+| 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) + scale-aug fine-tune test on real ~0.6 m NAIP | | per-landscape metrics |
 | 7 Viewer features (fly mode, probe, profile, slope, validation panel) | **7a-7e done** 2026-09-26 | see docs/phase7_explorer.md |
 | 8 Polish, docs, packaging | | |
 
@@ -49,10 +49,14 @@ See `docs/phase3_demo.md`. Upload JPG/PNG -> 2b model (tiled, native resolution)
 Hand-off contract `height_product` (kind, units, gsd + source, metric_validity, crs/transform/datum null
 until Phase 5). Run: see docs/phase3_demo.md. Old backend/.venv retired (project .venv only).
 
-## Phase 4 study summary
+## Phase 4 summary (CLOSED 2026-09-26)
 See `docs/phase4_gsd_study.md`. Direct inference (A) RMSE 3.15 (0.33 m) / 3.41 (0.5) / 3.87 (0.66) / 5.19 (1.0) /
 7.46 (2.0); tall objects and bias degrade most. Resample-to-0.33 (B) is never better and significantly worse
-from 0.66 m. Scale-augmentation fine-tuning NOT started (awaiting decision).
+from 0.66 m.
+Decisions: (1) production = direct inference, never resample user imagery (test-locked);
+(2) the validity threshold is NOT widened: "valid" stays at 0.33 m +-25% (test-locked);
+(3) scale-augmentation fine-tuning moves to Phase 6, tested on real ~0.6 m NAIP imagery;
+(4) GCP correction stays in Phase 5. The trained 2b model is unchanged.
 
 ## Phase 7 summary
 See `docs/phase7_explorer.md`. Full-screen 3D Explorer in real metres: Orbit/Fly/Walk with terrain-constrained

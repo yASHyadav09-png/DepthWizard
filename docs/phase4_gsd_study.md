@@ -1,7 +1,7 @@
 # Phase 4: resolution (GSD) study of the Phase 2b model
 
-Status: **study complete, validation only** (2026-09-26). No training was started, and scale-augmentation
-fine-tuning awaits a decision. The test split was not used.
+Status: **Phase 4 CLOSED** (2026-09-26). Study complete (validation only); decisions in §Decision below.
+No training was started; the trained 2b model is unchanged. The test split was not used by this study.
 
 Run: `runs/20260926-124248_phase4_gsd_study/` (`summary.csv`, `metrics_val.json`, `per_tile_*.csv`,
 `bootstrap_B_minus_A.json`, `figures/gsd_curves.png`). Script: `scripts/phase4_gsd_study.py`.
@@ -86,7 +86,18 @@ NYC isn't included: the GAMUS val split has no NYC tiles.
 4. **DC degrades much more than PHL** (tall buildings and forest). PHL stays within 0.6 m RMSE of
    full resolution up to 1 m.
 
-## Implications (for your decision; nothing started)
+## Decision (Phase 4 closure, 2026-09-26)
+| # | decision | status / enforcement |
+|---|---|---|
+| 1 | **Production strategy = direct inference (A).** User imagery is never resampled to 0.33 m/px. | Already the app behaviour. Locked by `backend/tests/test_api.py::test_phase4_decision_inference_runs_on_native_pixels`. |
+| 2 | **The metric-validity threshold is NOT widened.** "valid" stays within ±25% of 0.33 m (≈ 0.25–0.41 m/px); 0.5 m stays "uncertain". This study shows a moderate degradation at 0.5 m (+8% RMSE, larger for tall objects) but doesn't show that ≤ 0.5 m meets a project accuracy criterion, so the label isn't relaxed. | Locked by `tests/test_inference.py::test_phase4_decision_validity_threshold_unchanged`. |
+| 3 | **Scale-augmentation fine-tuning moves to Phase 6**, where it will be tested on real ≈ 0.6 m NAIP imagery instead of this simulated coarsening. | Not started. |
+| 4 | **GCP correction stays in Phase 5** with georeferenced input handling. | Not started. |
+
+The analysis below is kept as written; the "Implications" were proposals, and the table above records what
+was adopted.
+
+## Implications (proposals at the time of the study; see Decision above)
 - **App policy that follows from the data:** run **direct inference (A)**, not resampling. Keep the
   "uncertain" label for resolutions coarser than about 0.5 m (the current ±25% band around 0.33 m
   labels only ≈ 0.25–0.41 m as "valid"; the data would support widening it to 0.5 m, if you agree).

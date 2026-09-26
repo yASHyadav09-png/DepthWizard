@@ -73,3 +73,15 @@ def test_tiling_has_no_seams_and_handles_large_images():
     big = np.concatenate([rgb, rgb[:, :500]], 1)                     # 1024 x 1524
     h = p.predict(big)
     assert h.shape == (1024, 1524) and np.isfinite(h).all()
+
+
+def test_phase4_decision_validity_threshold_unchanged():
+    """Phase 4 closure (2026-09-26): the green 'valid' band stays at +-25% of 0.33 m
+    (about 0.2475-0.4125 m/px). It was deliberately NOT widened to <= 0.5 m."""
+    from depthwizard.inference import GSD_TOLERANCE
+    assert GSD_TOLERANCE == 0.25
+    assert metric_validity(0.41)[0] == "valid"
+    assert metric_validity(0.25)[0] == "valid"
+    assert metric_validity(0.42)[0] == "uncertain"
+    assert metric_validity(0.50)[0] == "uncertain"
+    assert metric_validity(0.24)[0] == "uncertain"
