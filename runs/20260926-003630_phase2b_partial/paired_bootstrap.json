@@ -1,0 +1,153 @@
+{
+  "definition": "delta = metric_model - metric_reference; paired tile bootstrap; significantly better <=> upper 95% bound < 0",
+  "model": "phase2b",
+  "n_tiles": 859,
+  "resamples": 2000,
+  "seed": 0,
+  "comparisons": {
+    "B1_r1022_pct_lin": {
+      "RMSE": {
+        "model": 3.1475973889535656,
+        "reference": 6.602439568737494,
+        "delta": -3.4548421797839284,
+        "ci95": [
+          -3.761344201907776,
+          -3.1520584478550715
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.5558960695183321,
+        "reference": 4.662762774795159,
+        "delta": -3.1068667052768273,
+        "ci95": [
+          -3.2410321195636427,
+          -2.9750450225194283
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "B0_zero": {
+      "RMSE": {
+        "model": 3.1475973889535656,
+        "reference": 7.845430233705549,
+        "delta": -4.697832844751983,
+        "ci95": [
+          -5.098488727928062,
+          -4.306709037742744
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.5558960695183321,
+        "reference": 3.942054607666145,
+        "delta": -2.386158538147813,
+        "ci95": [
+          -2.5880113666556612,
+          -2.1927604501822024
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "B0_mean": {
+      "RMSE": {
+        "model": 3.1475973889535656,
+        "reference": 6.826468512921136,
+        "delta": -3.6788711239675704,
+        "ci95": [
+          -3.984440941301267,
+          -3.385830195985479
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.5558960695183321,
+        "reference": 5.103062807044915,
+        "delta": -3.5471667375265827,
+        "ci95": [
+          -3.6758996673118163,
+          -3.4226602834946966
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "B2_oracle_r518": {
+      "RMSE": {
+        "model": 3.1475973889535656,
+        "reference": 4.765846190165673,
+        "delta": -1.6182488012121077,
+        "ci95": [
+          -1.733794460913365,
+          -1.5068281093315747
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.5558960695183321,
+        "reference": 3.0264361123168566,
+        "delta": -1.4705400427985245,
+        "ci95": [
+          -1.5546864071621167,
+          -1.3877916306686133
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "B2_oracle_r1022": {
+      "RMSE": {
+        "model": 3.1475973889535656,
+        "reference": 4.830237631043835,
+        "delta": -1.6826402420902697,
+        "ci95": [
+          -1.7949742975850398,
+          -1.565750692745053
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.5558960695183321,
+        "reference": 3.1009197436588485,
+        "delta": -1.5450236741405163,
+        "ci95": [
+          -1.6277706502640286,
+          -1.462286371664108
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    },
+    "20260925-163139_phase2a_frozen": {
+      "RMSE": {
+        "model": 3.1475973889535656,
+        "reference": 3.548011041281186,
+        "delta": -0.4004136523276203,
+        "ci95": [
+          -0.48047442275767677,
+          -0.32597036180970984
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.5558960695183321,
+        "reference": 1.7294338208026852,
+        "delta": -0.173537751284353,
+        "ci95": [
+          -0.20273342530571659,
+          -0.1478674031779551
+        ],
+        "significantly_better": true,
+        "significantly_worse": false
+      }
+    }
+  }
+}

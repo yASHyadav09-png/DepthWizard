@@ -102,7 +102,9 @@ leaf-off forest (e.g. DC_18_24: 12.6 m RMSE, vs 27.7 m for B1).
    tall leaf-off DC forest, where bare branches give little texture cue about canopy height.
 4. **2a has saturated.** Val RMSE was flat from epoch 18 (3.573) to epoch 30 (3.562), and the
    best (3.548) is within that band.
-5. **The gradient-matching loss barely moved** (L_grad ≈ 1.0 m at the start and 0.95 m at the
+5. *(Superseded by the 2b result: see `docs/phase2b_results.md` §5.3. L_grad also stayed flat
+   in 2b with 4 encoder blocks trainable, so the "frozen encoder limits fine structure"
+   explanation below isn't supported.)* **The gradient-matching loss barely moved** (L_grad ≈ 1.0 m at the start and 0.95 m at the
    end), while L1 fell from 4.8 to 1.8 m. The decoder learned the metric level but not finer
    relative structure (edges, crown shapes). That's consistent with the frozen encoder
    limiting spatial detail. `0.5·L_grad / L1` rose from 0.10 to at most 0.30 only because L1

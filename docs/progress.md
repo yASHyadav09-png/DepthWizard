@@ -4,7 +4,7 @@
 |---|---|---|
 | 0 Data inspection + dataloader | **done** 2026-09-25 | RGB/nDSM/mask aligned; units, NoData verified; loader tested |
 | 1 Baselines (B0 trivial, B1 DA-V2-S + global calibration, B2 oracle per-image calibration) | **done** 2026-09-25 | reproducible val metrics + figures (bit-identical rerun) |
-| 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **2a done** 2026-09-25; 2b awaiting decision | beats B1 on val; one test run |
+| 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **done** 2026-09-26: 2b kept (pre-registered rule) | beats B1 on val; one test run |
 | 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | | GAMUS image viewable as 3D |
 | 4 Resolution/GSD handling + GCP correction | | GSD study in results.csv |
 | 5 Absolute DSM (DEM, CRS, vertical datum) | | valid GeoTIFF out, correct in QGIS |
@@ -35,6 +35,13 @@ Significantly better than B1 and B0, and outperformed the Phase 1 oracle per-ima
 on the reported val metrics (all paired-bootstrap upper bounds < 0; the oracle baseline is a diagnostic
 reference, not a theoretical upper bound). Trained before the NaN-target fix (logging-only issue). Remaining error: tall objects underestimated (-9 m above 20 m), DC leaf-off forest.
 Test split untouched. 2b not started.
+
+## Phase 2b summary
+See `docs/phase2b_results.md`. Run `runs/20260926-003630_phase2b_partial`, init from 2a best, best epoch 20/20.
+Val: RMSE 3.148, MAE 1.556, r 0.889, bias -0.42; building RMSE 3.84, tree 4.88.
+Decision: dRMSE(2b-2a) = -0.400 [-0.480, -0.326] -> upper bound < 0 -> **2b is the Phase 2 model**.
+Still underestimates tall objects (-6.3 m bias above 20 m). NYC untested (no NYC val tiles).
+Test split untouched; awaiting explicit approval for any test-set action.
 
 ## Data status
 - `phase1` subset: 200 train + 859 val, complete.
