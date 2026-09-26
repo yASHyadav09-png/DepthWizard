@@ -7,8 +7,9 @@ import { RasterPanel } from './components/RasterPanel'
 import { TerrainViewer } from './components/TerrainViewer'
 import type { NavMode } from './components/TerrainViewer'
 import { ViewerControls } from './components/ViewerControls'
+import { Explorer } from './explorer/Explorer'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { Badge, Panel } from './components/ui'
+import { Panel } from './components/ui'
 import { ApiError, getHealth, getResult, processImage } from './services/api'
 import type { HealthResponse, PipelineStage, ProcessResult, ViewMode } from './types'
 
@@ -30,6 +31,7 @@ export default function App() {
   const [exaggeration, setExaggeration] = useState(DEFAULT_EXAGGERATION)
   const [navMode, setNavMode] = useState<NavMode>('orbit')
   const [resetSignal, setResetSignal] = useState(0)
+  const [explorerOpen, setExplorerOpen] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
   const previewRef = useRef<string | null>(null)
@@ -191,9 +193,13 @@ export default function App() {
               title="3 · 3D Terrain (height above ground)"
               aside={
                 result ? (
-                  <Badge tone="relief">
-                    {navMode === 'orbit' ? 'Orbit' : 'Flythrough'}
-                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => setExplorerOpen(true)}
+                    className="rounded-md bg-linear-to-r from-signal-500 to-relief-500 px-3 py-1 text-[11px] font-semibold text-abyss-950 shadow shadow-signal-500/20 transition hover:brightness-110"
+                  >
+                    Enter 3D Explorer ⛶
+                  </button>
                 ) : null
               }
               bodyClassName="p-0"
@@ -237,6 +243,10 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {explorerOpen && result && (
+        <Explorer result={result} onExit={() => setExplorerOpen(false)} />
+      )}
 
       <footer className="mx-auto w-full max-w-[1800px] px-5 pt-1 pb-5">
         <p className="text-[11px] text-slate-600">

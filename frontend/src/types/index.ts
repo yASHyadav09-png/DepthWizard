@@ -132,3 +132,23 @@ export type PipelineStage =
   | 'error'
 
 export type ViewMode = 'textured' | 'elevation'
+
+export interface MetricBlock {
+  n: number
+  mae: number | null
+  rmse: number | null
+  pearson_r: number | null
+  bias: number | null
+}
+
+/** Response of POST /api/results/{job}/validate (Phase 7d). error = predicted - reference. */
+export interface ValidationResult {
+  job_id: string
+  reference: { filename: string; valid_pixels: number; valid_fraction: number; units: string }
+  definition: string
+  overall: MetricBlock
+  per_height_band: Record<string, MetricBlock>
+  error_map: string
+  error_limit_m: number
+  error_grid: { width: number; height: number; encoding: string; values_b64: string }
+}

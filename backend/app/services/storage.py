@@ -66,6 +66,12 @@ def save_array(job_id: str, filename: str, array: np.ndarray) -> str:
     return asset_url(job_id, filename)
 
 
+def save_metadata_file(job_id: str, filename: str, payload: dict) -> str:
+    path = job_dir(job_id, create=True) / filename
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return asset_url(job_id, filename)
+
+
 def save_metadata(job_id: str, metadata: dict) -> str:
     path = job_dir(job_id, create=True) / METADATA_JSON
     path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")

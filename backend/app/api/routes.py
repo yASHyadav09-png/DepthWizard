@@ -80,6 +80,22 @@ def height_array(job_id: str) -> FileResponse:
     )
 
 
+@router.post("/results/{job_id}/validate", tags=["validation"])
+async def validate_job(job_id: str, reference: UploadFile = File(...)) -> dict:
+    """Compare the job's nDSM with a reference height array (.npy, metres, same pixel grid;
+    NaN = no data). Returns RMSE/MAE/r/bias, a per-height-band breakdown and an error map."""
+    from app.services.validation import validate
+
+    storage.validate_job_id(job_id)
+    try:
+        data = await reference.read()
+    finally:
+        await reference.close()
+    if len(data) > settings.MAX_UPLOAD_BYTES * 4:
+        raise InvalidImageError("Reference file is too large.")
+    return await to_thread.run_sync(lambda: validate(job_id, data, reference.filename))
+
+
 @router.get("/jobs", response_model=JobListResponse, tags=["pipeline"])
 def jobs() -> JobListResponse:
     return JobListResponse(jobs=storage.list_jobs())

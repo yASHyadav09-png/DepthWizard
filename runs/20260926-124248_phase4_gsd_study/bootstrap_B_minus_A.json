@@ -1,0 +1,101 @@
+{
+  "definition": "delta = metric_B - metric_A on the same tiles and grid; paired tile bootstrap, 2000 resamples",
+  "results": {
+    "0.50": {
+      "RMSE": {
+        "model": 3.429152461658161,
+        "reference": 3.412603029491471,
+        "delta": 0.016549432166689915,
+        "ci95": [
+          -0.01838336393303037,
+          0.05359495748306617
+        ],
+        "significantly_better": false,
+        "significantly_worse": false
+      },
+      "MAE": {
+        "model": 1.7023054180676533,
+        "reference": 1.7102344340796103,
+        "delta": -0.007929016011956946,
+        "ci95": [
+          -0.024222957302608806,
+          0.00861104069368702
+        ],
+        "significantly_better": false,
+        "significantly_worse": false
+      }
+    },
+    "0.66": {
+      "RMSE": {
+        "model": 4.229325903618401,
+        "reference": 3.8690917987255213,
+        "delta": 0.36023410489287944,
+        "ci95": [
+          0.2952579333516197,
+          0.4247856981006067
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      },
+      "MAE": {
+        "model": 2.043541048952055,
+        "reference": 1.9776661533893236,
+        "delta": 0.06587489556273152,
+        "ci95": [
+          0.03402898863861729,
+          0.09707968092851849
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    },
+    "1.00": {
+      "RMSE": {
+        "model": 6.609960938475648,
+        "reference": 5.189166225740746,
+        "delta": 1.420794712734902,
+        "ci95": [
+          1.2294033671049922,
+          1.6061566083375132
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      },
+      "MAE": {
+        "model": 3.063909338762021,
+        "reference": 2.6586095020621,
+        "delta": 0.40529983669992076,
+        "ci95": [
+          0.3225129166259651,
+          0.49234478653505853
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    },
+    "2.00": {
+      "RMSE": {
+        "model": 7.709315570277303,
+        "reference": 7.454895684900703,
+        "delta": 0.2544198853766,
+        "ci95": [
+          0.1983410453757741,
+          0.3137566751595997
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      },
+      "MAE": {
+        "model": 3.899181737449489,
+        "reference": 3.8085905157198745,
+        "delta": 0.09059122172961454,
+        "ci95": [
+          0.06677391664413948,
+          0.1165081894468972
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    }
+  }
+}

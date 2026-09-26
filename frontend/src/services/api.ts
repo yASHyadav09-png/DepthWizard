@@ -1,4 +1,4 @@
-import type { HealthResponse, ProcessResult } from '../types'
+import type { HealthResponse, ProcessResult, ValidationResult } from '../types'
 
 /** Dev uses the Vite proxy (same origin); override with VITE_API_BASE if the
  *  backend runs elsewhere. */
@@ -69,4 +69,21 @@ export async function getResult(jobId: string): Promise<ProcessResult> {
   const response = await fetch(`${API_BASE}/api/results/${jobId}`)
   if (!response.ok) throw await parseError(response)
   return response.json()
+}
+
+export async function validateJob(jobId: string, reference: File): Promise<ValidationResult> {
+  const form = new FormData()
+  form.append('reference', reference)
+  const response = await fetch(`${API_BASE}/api/results/${jobId}/validate`, { method: 'POST', body: form })
+  if (!response.ok) throw await parseError(response)
+  return response.json()
+}
+
+export function decodeFloat32(b64: string, expected: number): Float32Array {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  const out = new Float32Array(bytes.buffer, 0, bytes.length >> 2)
+  if (out.length !== expected) throw new Error(`expected ${expected} values, got ${out.length}`)
+  return out
 }

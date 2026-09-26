@@ -168,3 +168,45 @@ def test_model_failure_surfaces_as_503(client, monkeypatch, png_bytes):
     monkeypatch.setattr("app.services.pipeline.get_height_estimator", lambda: Broken())
     r = post(client, png_bytes)
     assert r.status_code == 503 and r.json()["error"] == "model_error"
+
+
+# --- validation (Phase 7d) -------------------------------------------------
+def _npy(a) -> bytes:
+    buf = io.BytesIO()
+    np.save(buf, np.asarray(a, dtype=np.float32))
+    return buf.getvalue()
+
+
+def test_validation_against_identical_reference_is_zero_error(client, png_bytes):
+    job = post(client, png_bytes).json()["job_id"]
+    pred = np.load(io.BytesIO(client.get(f"/api/results/{job}/height-array").content))
+    r = client.post(f"/api/results/{job}/validate", files={"reference": ("ref.npy", _npy(pred), "application/octet-stream")})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["overall"]["rmse"] == pytest.approx(0.0) and body["overall"]["mae"] == pytest.approx(0.0)
+    assert body["reference"]["valid_fraction"] == pytest.approx(1.0)
+    assert client.get(body["error_map"]).status_code == 200
+    grid = np.frombuffer(base64.b64decode(body["error_grid"]["values_b64"]), dtype="<f4")
+    assert grid.size == body["error_grid"]["width"] * body["error_grid"]["height"]
+
+
+def test_validation_metrics_and_nodata(client, png_bytes):
+    job = post(client, png_bytes).json()["job_id"]
+    pred = np.load(io.BytesIO(client.get(f"/api/results/{job}/height-array").content))
+    ref = pred + 2.0                      # prediction is 2 m too low everywhere
+    ref[:10] = np.nan                     # no-data rows are excluded
+    body = client.post(f"/api/results/{job}/validate",
+                       files={"reference": ("ref.npy", _npy(ref), "application/octet-stream")}).json()
+    assert body["overall"]["bias"] == pytest.approx(-2.0, abs=1e-5)
+    assert body["overall"]["mae"] == pytest.approx(2.0, abs=1e-5)
+    assert body["reference"]["valid_pixels"] == pred.size - 10 * pred.shape[1]
+
+
+def test_validation_rejects_wrong_grid_and_garbage(client, png_bytes):
+    job = post(client, png_bytes).json()["job_id"]
+    r = client.post(f"/api/results/{job}/validate", files={"reference": ("r.npy", _npy(np.zeros((5, 5))), "x")})
+    assert r.status_code == 400 and "grid" in r.json()["detail"]
+    r = client.post(f"/api/results/{job}/validate", files={"reference": ("r.npy", b"not numpy", "x")})
+    assert r.status_code == 400
+    assert client.post("/api/results/ffffffffffff/validate",
+                       files={"reference": ("r.npy", _npy(np.zeros((5, 5))), "x")}).status_code == 404
