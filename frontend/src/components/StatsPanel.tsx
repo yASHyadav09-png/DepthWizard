@@ -51,6 +51,9 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
   const s = result.statistics
   const hp = result.height_product
   const m = (value: number) => `${value.toFixed(2)} m`
+  const elev = s.elevation && 'dsm_min' in s.elevation ? s.elevation : null
+  const btn =
+    'rounded-md border border-slate-400/20 px-2.5 py-1.5 font-mono text-[10px] tracking-wide text-slate-400 uppercase transition hover:border-signal-400/40 hover:text-signal-300'
 
   return (
     <Panel title="Statistics" bodyClassName="space-y-3 p-4">
@@ -61,6 +64,9 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
         <Tile label="P95" value={m(s.p95)} />
         <Tile label="Max" value={m(s.max)} />
       </div>
+      {hp.kind === 'dsm' && (
+        <p className="-mt-1 text-[10px] text-slate-600">tiles: height above ground (nDSM)</p>
+      )}
 
       <div>
         <Row label="Image" value={`${result.source.width} × ${result.source.height} px`} />
@@ -72,6 +78,28 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
           label="Footprint"
           value={`${result.terrain.plane_width.toFixed(0)} × ${result.terrain.plane_depth.toFixed(0)} m`}
         />
+        {elev && (
+          <>
+            <Row label="Elevation (DSM)" value={`${elev.dsm_min.toFixed(1)} – ${elev.dsm_max.toFixed(1)} m`} accent />
+            <Row label="Ground (DTM)" value={`${elev.dtm_min.toFixed(1)} – ${elev.dtm_max.toFixed(1)} m`} />
+            <Row label="Vertical datum" value={hp.vertical_datum ?? '–'} />
+            <Row
+              label="DEM"
+              value={`${hp.dem?.source ?? '–'} · ${hp.dem?.how ?? ''}${
+                hp.dem?.ground_filter ? ` · filter ${hp.dem.ground_filter.window_m} m` : ''
+              }`}
+            />
+            <Row
+              label="GCP correction"
+              value={
+                hp.gcp
+                  ? `${hp.gcp.model} · offset ${hp.gcp.params.a >= 0 ? '+' : ''}${hp.gcp.params.a.toFixed(2)} m`
+                  : 'none'
+              }
+            />
+          </>
+        )}
+        {hp.kind === 'ndsm' && hp.crs && hp.dem && <Row label="DEM" value={hp.dem.how} />}
         <Row label="Mean height" value={m(s.mean)} />
         <Row label="P05 – P99" value={`${s.p05.toFixed(2)} – ${s.p99.toFixed(2)} m`} />
         <Row label="Area above 2 m" value={`${(s.frac_above_2m * 100).toFixed(1)} %`} />
@@ -81,23 +109,32 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
         <Row label="Checkpoint sha256" value={result.model.checkpoint_sha256.slice(0, 16) + '…'} />
         <Row label="Val RMSE (GAMUS)" value={m(result.model.val_rmse_m)} />
         <Row label="Processing device" value={result.model.device_label} accent />
-        <Row label="Georeferenced" value={s.georeferenced ? 'yes' : 'no (Phase 5)'} />
+        <Row label="Georeferenced" value={s.georeferenced ? `yes · ${hp.crs}` : 'no (JPG/PNG input)'} />
         <Row label="Job ID" value={result.job_id} />
       </div>
 
+      {hp.notes && hp.notes.length > 0 && (
+        <ul className="list-disc space-y-0.5 pl-4 text-[10px] leading-snug text-amber-300/80">
+          {hp.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      )}
+
       <div className="flex flex-wrap gap-2 pt-0.5">
-        <a
-          href={assetUrl(result.assets.height_array)}
-          download
-          className="rounded-md border border-slate-400/20 px-2.5 py-1.5 font-mono text-[10px] tracking-wide text-slate-400 uppercase transition hover:border-signal-400/40 hover:text-signal-300"
-        >
+        {Object.entries(hp.geotiffs ?? {}).map(([k, url]) => (
+          <a key={k} href={assetUrl(url)} download className={btn}>
+            ↓ {k} .tif
+          </a>
+        ))}
+        <a href={assetUrl(hp.ndsm_array ?? result.assets.height_array)} download className={btn}>
           ↓ nDSM .npy (m)
         </a>
         <a
           href={assetUrl(`/static/${result.job_id}/metadata.json`)}
           target="_blank"
           rel="noreferrer"
-          className="rounded-md border border-slate-400/20 px-2.5 py-1.5 font-mono text-[10px] tracking-wide text-slate-400 uppercase transition hover:border-signal-400/40 hover:text-signal-300"
+          className={btn}
         >
           ↗ metadata.json
         </a>

@@ -2,12 +2,16 @@
  * Full-screen 3D Explorer (Phase 7a). Entered from the dashboard once a result exists.
  * Real-metre scene (terrainModel.ts), Orbit / Fly / Walk navigation constrained by the
  * terrain (physics.ts), minimap, status HUD and model/GSD status.
+ * Phase 5: georeferenced DSM jobs show elevation (EGM2008), height above ground,
+ * easting/northing and lon/lat; GeoTIFF exports; validation against GeoTIFF references.
  */
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useProgress } from '@react-three/drei'
 import type { ProcessResult, ValidationResult } from '../types'
 import { ApiError, assetUrl, decodeFloat32, validateJob } from '../services/api'
+import type { ValidationTarget } from '../services/api'
+import { datumLabel, formatLonLat, isDsm, mapCoords } from '../services/geo'
 import { Badge } from '../components/ui'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ExplorerScene, newTelemetry } from './ExplorerScene'
@@ -19,6 +23,9 @@ import { Minimap } from './Minimap'
 import { makeTerrainModel, slopeField } from './terrainModel'
 import { EYE_HEIGHT_M, FLY_CLEARANCE_M } from './physics'
 import { errorRampCss, rampCss, slopeRampCss } from './ramp'
+
+const LAYERS_NDSM: Layer[] = ['rgb', 'height', 'slope', 'error']
+const LAYERS_DSM: Layer[] = ['rgb', 'elevation', 'height', 'slope', 'error']
 
 const FLY_SPEEDS = [2, 5, 10, 15, 25, 40, 60, 100, 150] // m/s
 const WALK_SPEEDS = [0.8, 1.4, 2.5, 4] // m/s
@@ -46,6 +53,17 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
   const hp = result.height_product
   const terrain = useMemo(() => makeTerrainModel(grid), [grid])
   const slope = useMemo(() => slopeField(terrain), [terrain])
+  const dsm = isDsm(grid)
+  const base = terrain.base ?? 0
+  const geo = Boolean(hp.transform)
+  // colour ranges in scene units: height above ground from the nDSM statistics,
+  // elevation from the DSM display range shifted by the scene base
+  const heightMax = dsm ? result.statistics.display_max : grid.display_max
+  const elevRange = useMemo<[number, number]>(
+    () => [grid.display_min - base, grid.display_max - base],
+    [grid.display_min, grid.display_max, base],
+  )
+  const [validationTarget, setValidationTarget] = useState<ValidationTarget>('auto')
   const telemetry = useMemo(() => newTelemetry(), [])
   const [mode, setMode] = useState<NavMode>('orbit')
   const [layer, setLayer] = useState<Layer>('rgb')
@@ -68,7 +86,7 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
     setValidating(true)
     setValidationError(null)
     try {
-      const v = await validateJob(result.job_id, file)
+      const v = await validateJob(result.job_id, file, validationTarget)
       setValidation(v)
       setLayer('error')
     } catch (err) {
@@ -161,6 +179,11 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
   }
 
   const altitude = hud.camera.y - hud.groundBelow
+  const cursorMap = hud.cursor && geo ? mapCoords(result, hud.cursor.x, hud.cursor.z) : null
+  const cameraMap = geo ? mapCoords(result, hud.camera.x, hud.camera.z) : null
+  const elev = dsm && result.statistics.elevation && 'dsm_min' in result.statistics.elevation
+    ? result.statistics.elevation
+    : null
   const btn = 'rounded-md border border-slate-400/20 px-2.5 py-1 text-[11px] text-slate-300 transition hover:border-signal-400/50 hover:text-signal-300'
 
   return (
@@ -176,8 +199,10 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
           {grid.gsd_m} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
         </span>
         <Badge tone={valid ? 'relief' : 'warn'}>
-          {valid ? 'Height above ground · m' : 'Estimated m · resolution uncertain'}
+          {dsm ? `Surface elevation · m ${datumLabel(result)}` : valid ? 'Height above ground · m' : 'Estimated m'}
+          {valid ? '' : ' · resolution uncertain'}
         </Badge>
+        {geo && <Badge tone="neutral">{hp.crs}</Badge>}
         <span className="ml-auto hidden font-mono text-[10px] text-slate-500 md:inline">
           model {result.model.run} · epoch {result.model.epoch} · val RMSE {result.model.val_rmse_m.toFixed(2)} m ·{' '}
           {result.model.device_label}
@@ -265,7 +290,8 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                 slope={slope}
                 textureUrl={textureUrl}
                 layer={layer}
-                displayMax={grid.display_max}
+                heightMax={heightMax}
+                elevRange={elevRange}
                 mode={mode}
                 speed={speed}
                 telemetry={telemetry}
@@ -305,8 +331,8 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
             </div>
           )}
           <div className="absolute bottom-3 left-3 z-10">
-            {profile && <ProfileChart profile={profile} onClose={clearTool} />}
-            {measurement && <MeasureCard m={measurement} onClose={clearTool} />}
+            {profile && <ProfileChart profile={profile} onClose={clearTool} base={base} elevation={dsm} />}
+            {measurement && <MeasureCard m={measurement} onClose={clearTool} base={base} elevation={dsm} />}
           </div>
 
           <div className="absolute right-3 bottom-3">
@@ -323,7 +349,7 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                 ✕
               </button>
             </div>
-            {(['rgb', 'height', 'slope', 'error'] as const).map((l) => (
+            {(dsm ? LAYERS_DSM : LAYERS_NDSM).map((l) => (
               <label
                 key={l}
                 className={`flex items-center gap-2 ${l === 'error' && !validation ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
@@ -339,6 +365,8 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                   ? 'RGB image'
                   : l === 'height'
                     ? 'Height above ground'
+                    : l === 'elevation'
+                      ? `Elevation (${datumLabel(result)})`
                     : l === 'slope'
                       ? 'Slope (degrees)'
                       : 'Error vs reference'}
@@ -356,8 +384,8 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                   <span>90°</span>
                 </div>
                 <p className="mt-1 text-[10px] leading-snug text-slate-500">
-                  Slope of the imaged surface on the {terrain.dx.toFixed(2)} m grid: roofs and canopy, and near-vertical
-                  values at building walls and tree edges.
+                  Slope of the {dsm ? 'surface (DSM)' : 'imaged surface'} on the {terrain.dx.toFixed(2)} m grid: roofs,
+                  canopy{dsm ? ', hillsides' : ''}, and near-vertical values at building walls and tree edges.
                 </p>
               </div>
             )}
@@ -379,27 +407,66 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                 <div className="h-2 rounded-sm" style={{ background: `linear-gradient(to right, ${rampCss()})` }} />
                 <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-300">
                   <span>0 m</span>
-                  <span>{(grid.display_max / 2).toFixed(0)} m</span>
-                  <span>≥{grid.display_max.toFixed(0)} m</span>
+                  <span>{(heightMax / 2).toFixed(0)} m</span>
+                  <span>≥{heightMax.toFixed(0)} m</span>
                 </div>
               </div>
             )}
+            {layer === 'elevation' && (
+              <div>
+                <div className="h-2 rounded-sm" style={{ background: `linear-gradient(to right, ${rampCss()})` }} />
+                <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-300">
+                  <span>≤{grid.display_min.toFixed(0)} m</span>
+                  <span>{((grid.display_min + grid.display_max) / 2).toFixed(0)} m</span>
+                  <span>≥{grid.display_max.toFixed(0)} m</span>
+                </div>
+                <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                  Surface elevation (DSM = DTM + nDSM), metres above the EGM2008 geoid.
+                </p>
+              </div>
+            )}
             <div className="space-y-1 border-t border-slate-400/12 pt-2 font-mono text-[10px] text-slate-400">
+              {elev && (
+                <>
+                  <div>
+                    elevation {elev.dsm_min.toFixed(1)} – {elev.dsm_max.toFixed(1)} m
+                  </div>
+                  <div>ground relief {elev.relief_m.toFixed(1)} m (DTM)</div>
+                  <div className="text-slate-500">height above ground:</div>
+                </>
+              )}
               <div>median {result.statistics.median.toFixed(1)} m · p95 {result.statistics.p95.toFixed(1)} m</div>
               <div>max {result.statistics.max.toFixed(1)} m · &gt;2 m: {(result.statistics.frac_above_2m * 100).toFixed(0)}%</div>
               <div>scale: true (1 m = 1 m, no exaggeration)</div>
+              {base !== 0 && <div>scene Y 0 = {base} m elevation (shift only)</div>}
             </div>
             <div className="space-y-1.5 border-t border-slate-400/12 pt-2">
               <span className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">Validation</span>
               <p className="text-[10px] leading-snug text-slate-500">
                 Reference heights: <code>.npy</code> in metres on the same {result.height_product.width}×
-                {result.height_product.height} px grid, NaN = no data (GeoTIFF: Phase 5).
+                {result.height_product.height} px grid (NaN = no data)
+                {geo
+                  ? ', or a GeoTIFF in any CRS (reprojected onto this grid; NAVD88 converted to EGM2008).'
+                  : '. GeoTIFF references need a GeoTIFF input.'}
               </p>
+              {dsm && (
+                <label className="flex items-center gap-2 text-[10px] text-slate-400">
+                  compare
+                  <select
+                    value={validationTarget}
+                    onChange={(e) => setValidationTarget(e.target.value as ValidationTarget)}
+                    className="rounded border border-slate-400/20 bg-abyss-900 px-1 py-0.5 text-slate-200"
+                  >
+                    <option value="auto">DSM (elevation)</option>
+                    <option value="ndsm">nDSM (height above ground)</option>
+                  </select>
+                </label>
+              )}
               <label className="block cursor-pointer rounded-md border border-dashed border-slate-400/30 px-2 py-1.5 text-center text-[11px] text-slate-300 hover:border-signal-400/50">
-                {validating ? 'Validating…' : validation ? 'Replace reference…' : 'Upload reference .npy…'}
+                {validating ? 'Validating…' : validation ? 'Replace reference…' : `Upload reference ${geo ? '.tif / ' : ''}.npy…`}
                 <input
                   type="file"
-                  accept=".npy"
+                  accept={geo ? '.npy,.tif,.tiff' : '.npy'}
                   className="hidden"
                   disabled={validating}
                   onChange={(e) => {
@@ -414,6 +481,14 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                 <div className="space-y-1 font-mono text-[10px] text-slate-300">
                   <div className="truncate text-slate-500" title={validation.reference.filename}>
                     {validation.reference.filename} · {(validation.reference.valid_fraction * 100).toFixed(1)}% valid
+                  </div>
+                  <div className="text-slate-500">
+                    target <b className="text-slate-300">{validation.target.toUpperCase()}</b>
+                    {validation.reference.datum_conversion && (
+                      <span className="block leading-snug" title={validation.reference.datum_conversion}>
+                        datum: {validation.reference.datum_conversion}
+                      </span>
+                    )}
                   </div>
                   <div>
                     RMSE <b className="text-slate-100">{validation.overall.rmse?.toFixed(2)} m</b> · MAE{' '}
@@ -459,7 +534,17 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
               <span className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">Export</span>
               {(
                 [
-                  ['nDSM heights (.npy, float32 m)', result.assets.height_array],
+                  ...Object.entries(hp.geotiffs ?? {}).map(
+                    ([k, url]) =>
+                      [
+                        `${k.toUpperCase()} GeoTIFF (float32 m, ${k === 'ndsm' ? 'above ground' : datumLabel(result)})`,
+                        url,
+                      ] as [string, string],
+                  ),
+                  ...(result.assets.dsm_array
+                    ? ([['DSM elevations (.npy, float32 m)', result.assets.dsm_array]] as [string, string][])
+                    : []),
+                  ['nDSM heights (.npy, float32 m)', hp.ndsm_array ?? result.assets.height_array],
                   ['Height map (PNG)', result.assets.height_map],
                   ['Shaded relief (PNG)', result.assets.hillshade],
                   ['Metadata + provenance (JSON)', `/static/${result.job_id}/metadata.json`],
@@ -475,7 +560,9 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
                   ↓ {label}
                 </a>
               ))}
-              <p className="text-[10px] text-slate-600">GeoTIFF export arrives with Phase 5.</p>
+              {!geo && (
+                <p className="text-[10px] text-slate-600">GeoTIFF export needs a georeferenced (GeoTIFF) input.</p>
+              )}
             </div>
           </div>
         ) : (
@@ -498,7 +585,20 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
           {hud.cursor ? (
             <>
               {hud.pointerLocked ? 'target' : 'cursor'}{' '}
-              <b className="text-slate-100">{hud.cursor.height.toFixed(1)} m</b> above ground
+              {dsm ? (
+                <>
+                  <b className="text-slate-100">{(hud.cursor.height + base).toFixed(1)} m</b> {datumLabel(result)}
+                  {hud.cursor.aboveGround !== null && (
+                    <>
+                      {' '}· <b className="text-slate-100">{hud.cursor.aboveGround.toFixed(1)} m</b> above ground
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <b className="text-slate-100">{hud.cursor.height.toFixed(1)} m</b> above ground
+                </>
+              )}
               {hud.cursor.slope !== null && (
                 <>
                   {' '}· slope <b className="text-slate-100">{hud.cursor.slope.toFixed(0)}°</b>
@@ -524,8 +624,17 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
           you <b className="text-slate-100">{altitude.toFixed(1)} m</b> above surface
           {mode === 'fly' ? ` (min ${FLY_CLEARANCE_M} m)` : mode === 'walk' ? ` (eye ${EYE_HEIGHT_M} m)` : ''}
         </span>
+        {cursorMap && (
+          <span title={`${hp.crs} easting / northing; lon/lat WGS 84`}>
+            E {cursorMap.easting.toFixed(1)} · N {cursorMap.northing.toFixed(1)}
+            {cursorMap.lon !== null && cursorMap.lat !== null && <> · {formatLonLat(cursorMap.lon, cursorMap.lat)}</>}
+          </span>
+        )}
         <span>
-          position ({hud.camera.x.toFixed(0)}, {hud.camera.z.toFixed(0)}) m · Y {hud.camera.y.toFixed(1)} m
+          {cameraMap
+            ? `camera E ${cameraMap.easting.toFixed(0)} · N ${cameraMap.northing.toFixed(0)}`
+            : `position (${hud.camera.x.toFixed(0)}, ${hud.camera.z.toFixed(0)}) m`}{' '}
+          · {dsm ? `elev ${(hud.camera.y + base).toFixed(1)} m` : `Y ${hud.camera.y.toFixed(1)} m`}
         </span>
         <span>speed {mode === 'orbit' ? '–' : `${speed} m/s`}</span>
       </div>

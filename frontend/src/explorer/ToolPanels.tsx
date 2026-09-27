@@ -1,4 +1,5 @@
-/** DOM panels for the 7b tools: height profile chart and two-point measurement. */
+/** DOM panels for the 7b tools: height profile chart and two-point measurement.
+ *  Values arrive in scene Y; `base` (Phase 5 DSM jobs) turns them into elevations. */
 import type { Measurement, Profile } from './measure'
 
 const W = 640
@@ -16,19 +17,32 @@ function ticks(min: number, max: number, n: number): number[] {
   return out
 }
 
-export function ProfileChart({ profile, onClose }: { profile: Profile; onClose: () => void }) {
-  const { samples, length, minH, maxH, maxRise } = profile
-  const y0 = Math.min(0, minH)
+export function ProfileChart({
+  profile,
+  onClose,
+  base = 0,
+  elevation = false,
+}: {
+  profile: Profile
+  onClose: () => void
+  base?: number
+  elevation?: boolean
+}) {
+  const { samples, length, maxRise } = profile
+  const minH = profile.minH + base
+  const maxH = profile.maxH + base
+  // nDSM: axis from 0 m (ground); elevation: fit the profile's own range
+  const y0 = elevation ? Math.floor(minH - 2) : Math.min(0, minH)
   const y1 = Math.max(maxH + 2, y0 + 5)
   const L = Math.max(length, 1e-6)
   const sx = (d: number) => PAD.l + (d / L) * (W - PAD.l - PAD.r)
   const sy = (h: number) => PAD.t + (1 - (h - y0) / (y1 - y0)) * (H - PAD.t - PAD.b)
-  const line = samples.map((s) => `${sx(s.d).toFixed(1)},${sy(s.h).toFixed(1)}`).join(' ')
+  const line = samples.map((s) => `${sx(s.d).toFixed(1)},${sy(s.h + base).toFixed(1)}`).join(' ')
   const area = `${sx(0)},${sy(y0)} ${line} ${sx(L)},${sy(y0)}`
   return (
     <div className="rounded-lg border border-slate-400/20 bg-abyss-950/92 p-2 backdrop-blur">
       <div className="mb-1 flex items-center gap-3 font-mono text-[10px] text-slate-400">
-        <span className="tracking-widest text-slate-500 uppercase">Height profile</span>
+        <span className="tracking-widest text-slate-500 uppercase">{elevation ? 'Elevation profile' : 'Height profile'}</span>
         <span>
           length <b className="text-slate-100">{length.toFixed(1)} m</b>
         </span>
@@ -66,14 +80,25 @@ export function ProfileChart({ profile, onClose }: { profile: Profile; onClose: 
         </text>
       </svg>
       <p className="font-mono text-[9px] text-slate-600">
-        height above ground along A→B, sampled every {(samples.length > 1 ? samples[1].d : 0).toFixed(2)} m · vertical
+        {elevation ? 'surface elevation (m, EGM2008)' : 'height above ground'} along A→B, sampled every {(samples.length > 1 ? samples[1].d : 0).toFixed(2)} m · vertical
         axis is scaled to fit
       </p>
     </div>
   )
 }
 
-export function MeasureCard({ m, onClose }: { m: Measurement; onClose: () => void }) {
+export function MeasureCard({
+  m,
+  onClose,
+  base = 0,
+  elevation = false,
+}: {
+  m: Measurement
+  onClose: () => void
+  base?: number
+  elevation?: boolean
+}) {
+  const what = elevation ? 'elevation' : 'height'
   const row = (k: string, v: string) => (
     <div className="flex justify-between gap-4">
       <span className="text-slate-500">{k}</span>
@@ -89,9 +114,9 @@ export function MeasureCard({ m, onClose }: { m: Measurement; onClose: () => voi
         </button>
       </div>
       {row('ground distance', `${m.horizontal.toFixed(2)} m`)}
-      {row('height at A', `${m.hA.toFixed(2)} m`)}
-      {row('height at B', `${m.hB.toFixed(2)} m`)}
-      {row('height difference B−A', `${m.dh >= 0 ? '+' : ''}${m.dh.toFixed(2)} m`)}
+      {row(`${what} at A`, `${(m.hA + base).toFixed(2)} m`)}
+      {row(`${what} at B`, `${(m.hB + base).toFixed(2)} m`)}
+      {row(`${what} difference B−A`, `${m.dh >= 0 ? '+' : ''}${m.dh.toFixed(2)} m`)}
       {row('3D distance', `${m.slopeDistance.toFixed(2)} m`)}
     </div>
   )

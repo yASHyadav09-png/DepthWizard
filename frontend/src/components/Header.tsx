@@ -47,7 +47,7 @@ export function Header({
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Badge tone="signal">Phase 3 · nDSM (m)</Badge>
+          <Badge tone="signal">Phase 5 · nDSM + DSM (m)</Badge>
           {health && (
             <>
               <Badge tone="neutral">{health.model_name}</Badge>

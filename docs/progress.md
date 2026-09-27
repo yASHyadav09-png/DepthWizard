@@ -7,7 +7,7 @@
 | 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **done** 2026-09-26: 2b kept (pre-registered rule) | beats B1 on val; one test run |
 | 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | **done** 2026-09-26 | web path = evaluated model (Δ 1e-13 m); large images tiled; 3D in metres |
 | 4 Resolution/GSD handling | **closed** 2026-09-26 (study done; GCP -> Phase 5, scale-aug fine-tune -> Phase 6) | GSD study in results.csv |
-| 5 Absolute DSM (DEM, CRS, vertical datum) + GCP correction | not started (plan pending approval) | valid GeoTIFF out, correct in QGIS |
+| 5 Absolute DSM (DEM, CRS, vertical datum) + GCP correction | **done** 2026-09-27 (ground-filter default: decision open) | valid GeoTIFF out (tested with rasterio; manual QGIS check pending) |
 | 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) + scale-aug fine-tune test on real ~0.6 m NAIP | | per-landscape metrics |
 | 7 Viewer features (fly mode, probe, profile, slope, validation panel) | **7a-7e done** 2026-09-26 | see docs/phase7_explorer.md |
 | 8 Polish, docs, packaging | | |
@@ -57,6 +57,16 @@ Decisions: (1) production = direct inference, never resample user imagery (test-
 (2) the validity threshold is NOT widened: "valid" stays at 0.33 m +-25% (test-locked);
 (3) scale-augmentation fine-tuning moves to Phase 6, tested on real ~0.6 m NAIP imagery;
 (4) GCP correction stays in Phase 5. The trained 2b model is unchanged.
+
+## Phase 5 summary
+See `docs/phase5_geospatial.md`. GeoTIFF input -> CRS/transform/GSD from the file -> nDSM (2b, native grid)
++ Copernicus GLO-30 ground (150 m opening filter, EGM2008) + optional GCP offset/plane -> DSM/DTM/nDSM
+GeoTIFFs in the input CRS. Falls back to a georeferenced nDSM without a DEM. Viewer: elevation, height above
+ground, easting/northing, lon/lat, GeoTIFF export, GeoTIFF validation (NAVD88 -> EGM2008 via PROJ).
+Pittsburgh (NAIP 0.6 m vs 3DEP LiDAR, run `runs/20260926-161419_phase5_pittsburgh`): DSM RMSE 5.40 m
+(raw GLO-30 DSM 4.76), DTM 4.45 (raw GLO-30 3.27), model nDSM 3.05 (bias -2.0 m on objects).
+The 150 m filter hurts on steep terrain; the default is left unchanged pending a decision
+(choosing it from Pittsburgh would tune on the evaluation area). GCP offset helps slightly; plane over-fits.
 
 ## Phase 7 summary
 See `docs/phase7_explorer.md`. Full-screen 3D Explorer in real metres: Orbit/Fly/Walk with terrain-constrained

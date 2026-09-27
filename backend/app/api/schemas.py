@@ -48,6 +48,10 @@ class TerrainGridModel(BaseModel):
     display_min: float
     display_max: float
     height_units: str
+    # Phase 5 (georeferenced jobs): what `heights_b64` holds ("dsm" = elevation, m EGM2008;
+    # "ndsm" = height above ground) and the nDSM on the same grid (float32-le-base64).
+    surface_kind: str = "ndsm"
+    ndsm_b64: str | None = None
 
 
 class ProcessResponse(BaseModel):

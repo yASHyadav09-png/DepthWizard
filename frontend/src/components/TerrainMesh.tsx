@@ -4,6 +4,7 @@ import { useTexture } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { TerrainGrid, ViewMode } from '../types'
 import { decodeHeights } from '../services/terrain'
+import { sceneBase } from '../services/geo'
 
 /** Elevation ramp used for the "elevation" view mode and its legend (low -> high). */
 export const RAMP: [number, [number, number, number]][] = [
@@ -27,7 +28,8 @@ function rampColor(t: number, out: [number, number, number]) {
   out[2] = c0[2] + (c1[2] - c0[2]) * f
 }
 
-/** What the cursor is over: height above ground (m) and ground position (m from top-left). */
+/** What the cursor is over: the product value (height above ground, or elevation for a
+ *  DSM job) in m, and the ground position (m from top-left). */
 export interface HoverInfo {
   heightM: number
   xM: number
@@ -36,13 +38,15 @@ export interface HoverInfo {
 
 interface BuiltGeometry {
   geometry: THREE.BufferGeometry
-  baseHeights: Float32Array
+  baseHeights: Float32Array // scene Y before exaggeration
+  base: number
 }
 
 /**
  * Build the terrain surface in METRES: x/z span the ground footprint
  * (pixels x ground resolution) and y is the predicted height above ground, so
- * the scene has true proportions before any exaggeration.
+ * the scene has true proportions before any exaggeration. For DSM jobs (Phase 5)
+ * y = elevation - base (a vertical shift; exaggeration then scales relief above base).
  *
  * Grid row 0 is the TOP of the source image. It is placed at -Z and given
  * v = 1 so the RGB texture (loaded with flipY) lands the right way up.
@@ -50,6 +54,8 @@ interface BuiltGeometry {
 function buildGeometry(grid: TerrainGrid): BuiltGeometry {
   const { width: w, height: h, plane_width: pw, plane_depth: pd } = grid
   const heights = decodeHeights(grid)
+  const base = sceneBase(grid)
+  const shifted = base === 0 ? heights : heights.map((v) => v - base)
   const range = Math.max(grid.display_max - grid.display_min, 1e-6)
 
   const count = w * h
@@ -65,7 +71,7 @@ function buildGeometry(grid: TerrainGrid): BuiltGeometry {
       const index = j * w + i
 
       positions[index * 3] = (u - 0.5) * pw
-      positions[index * 3 + 1] = heights[index]
+      positions[index * 3 + 1] = shifted[index]
       positions[index * 3 + 2] = (v - 0.5) * pd
 
       uvs[index * 2] = u
@@ -104,7 +110,7 @@ function buildGeometry(grid: TerrainGrid): BuiltGeometry {
   geometry.setIndex(new THREE.BufferAttribute(indices, 1))
   geometry.computeVertexNormals()
 
-  return { geometry, baseHeights: heights }
+  return { geometry, baseHeights: shifted, base }
 }
 
 export function TerrainMesh({
@@ -125,7 +131,7 @@ export function TerrainMesh({
   const texture = useTexture(textureUrl)
   const meshRef = useRef<THREE.Mesh>(null)
 
-  const { geometry, baseHeights } = useMemo(() => buildGeometry(grid), [grid])
+  const { geometry, baseHeights, base } = useMemo(() => buildGeometry(grid), [grid])
 
   // Dispose the previous surface when a new job is loaded.
   useEffect(() => () => geometry.dispose(), [geometry])
@@ -160,7 +166,7 @@ export function TerrainMesh({
     const i = Math.round(u * (grid.width - 1))
     const j = Math.round(v * (grid.height - 1))
     onHover({
-      heightM: baseHeights[j * grid.width + i],
+      heightM: baseHeights[j * grid.width + i] + base,
       xM: u * grid.plane_width,
       yM: v * grid.plane_depth,
     })

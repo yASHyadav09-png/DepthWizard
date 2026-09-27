@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { FlyControls, Grid, OrbitControls, useProgress } from '@react-three/drei'
 import type { ProcessResult, ViewMode } from '../types'
 import { assetUrl } from '../services/api'
+import { datumLabel, isDsm } from '../services/geo'
 import { RAMP, TerrainMesh } from './TerrainMesh'
 import type { HoverInfo } from './TerrainMesh'
 import { Badge } from './ui'
@@ -49,13 +50,13 @@ function CameraRig({ resetSignal }: { resetSignal: number }) {
 }
 
 /** Colour scale of the elevation mode, in metres (same range as the 2D height map). */
-function HeightLegend({ min, max }: { min: number; max: number }) {
+function HeightLegend({ min, max, title }: { min: number; max: number; title: string }) {
   const stops = RAMP.map(
     ([t, [r, g, b]]) => `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)}) ${t * 100}%`,
   ).join(', ')
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 w-48 rounded-lg border border-slate-400/12 bg-abyss-950/80 px-2.5 py-2 backdrop-blur">
-      <p className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">Height above ground</p>
+      <p className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">{title}</p>
       <div className="mt-1.5 h-2 rounded-sm" style={{ background: `linear-gradient(to right, ${stops})` }} />
       <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-300">
         <span>{min.toFixed(0)} m</span>
@@ -133,6 +134,7 @@ export function TerrainViewer({
   const hp = result.height_product
   const worldScale = WORLD_SIZE / Math.max(grid.plane_width, grid.plane_depth)
   const valid = hp.metric_validity === 'valid'
+  const dsm = isDsm(grid)
 
   return (
     <div className="relative size-full">
@@ -216,8 +218,10 @@ export function TerrainViewer({
 
       <div className="pointer-events-none absolute top-3 left-3 flex flex-wrap gap-2">
         <Badge tone={valid ? 'relief' : 'warn'}>
-          {valid ? 'Height above ground · m' : 'Estimated m · resolution uncertain'}
+          {dsm ? `Surface elevation · m ${datumLabel(result)}` : valid ? 'Height above ground · m' : 'Estimated m'}
+          {valid ? '' : ' · resolution uncertain'}
         </Badge>
+        {hp.crs && <Badge tone="neutral">{hp.crs}</Badge>}
         <Badge tone="neutral">
           {grid.gsd_m} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
         </Badge>
@@ -231,7 +235,10 @@ export function TerrainViewer({
         {hover ? (
           <>
             <span className="text-slate-100">{hover.heightM.toFixed(1)} m</span>
-            <span className="text-slate-500"> above ground · at ({hover.xM.toFixed(0)}, {hover.yM.toFixed(0)}) m</span>
+            <span className="text-slate-500">
+              {dsm ? ` elevation (${datumLabel(result)})` : ' above ground'} · at ({hover.xM.toFixed(0)},{' '}
+              {hover.yM.toFixed(0)}) m
+            </span>
           </>
         ) : (
           <span className="text-slate-500">hover the terrain to read its height</span>
@@ -239,7 +246,11 @@ export function TerrainViewer({
       </div>
 
       {viewMode === 'elevation' && (
-        <HeightLegend min={grid.display_min} max={grid.display_max} />
+        <HeightLegend
+          min={grid.display_min}
+          max={grid.display_max}
+          title={dsm ? `Elevation · ${datumLabel(result)}` : 'Height above ground'}
+        />
       )}
 
       <div className="pointer-events-none absolute right-3 bottom-3 rounded-lg border border-slate-400/12 bg-abyss-950/80 px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-slate-500 backdrop-blur">

@@ -1,4 +1,4 @@
-/** Shapes returned by the DepthWizard backend (Phase 3: metric nDSM). */
+/** Shapes returned by the DepthWizard backend (Phase 3: metric nDSM; Phase 5: georeferenced DSM). */
 
 export interface TerrainGrid {
   width: number
@@ -20,6 +20,10 @@ export interface TerrainGrid {
   display_min: number
   display_max: number
   height_units: string
+  /** Phase 5: "dsm" = heights_b64 holds surface ELEVATION (m, EGM2008); "ndsm" = height above ground. */
+  surface_kind?: 'ndsm' | 'dsm'
+  /** Phase 5 (georeferenced jobs): height above ground on the same grid, float32-le-base64. */
+  ndsm_b64?: string | null
 }
 
 export type MetricValidity = 'valid' | 'uncertain'
@@ -38,8 +42,32 @@ export interface HeightProduct {
   validity_note: string
   nodata: unknown
   crs: string | null
+  /** GDAL order [a, b, c, d, e, f]: x = c + col*a, y = f + row*e (north-up). */
   transform: number[] | null
   vertical_datum: string | null
+  /** Phase 5 (GeoTIFF input) */
+  ndsm_array?: string
+  crs_epsg?: number | null
+  crs_wkt?: string
+  bounds?: number[]
+  /** lon/lat (WGS 84) of the image corners: top-left, top-right, bottom-right, bottom-left. */
+  corners_lonlat?: [number, number][]
+  dem?: {
+    how: string
+    source?: string
+    vertical_datum?: string
+    ground_filter?: { method: string; window_m: number; sigma_px: number }
+    coverage_fraction?: number
+  }
+  gcp?: {
+    model: string
+    params: { a: number; b: number; c: number }
+    n_used?: number
+    n_total?: number
+    [key: string]: unknown
+  } | null
+  geotiffs?: Record<string, string>
+  notes?: string[]
   model: {
     run: string
     checkpoint_sha256: string
@@ -64,6 +92,8 @@ export interface Statistics {
   is_metric: boolean
   metric_validity: MetricValidity
   georeferenced: boolean
+  /** Phase 5 DSM jobs: elevation ranges in m (EGM2008). */
+  elevation?: { dsm_min: number; dsm_max: number; dtm_min: number; dtm_max: number; relief_m: number } | Record<string, never>
 }
 
 export interface Assets {
@@ -72,6 +102,7 @@ export interface Assets {
   height_map: string
   hillshade: string
   height_array: string
+  dsm_array?: string
 }
 
 export interface ProcessResult {
@@ -144,7 +175,18 @@ export interface MetricBlock {
 /** Response of POST /api/results/{job}/validate (Phase 7d). error = predicted - reference. */
 export interface ValidationResult {
   job_id: string
-  reference: { filename: string; valid_pixels: number; valid_fraction: number; units: string }
+  reference: {
+    filename: string
+    valid_pixels: number
+    valid_fraction: number
+    units: string
+    crs?: string
+    vertical_crs?: string | null
+    datum_conversion?: string
+    resampling?: string
+  }
+  /** What was compared: the job's DSM (elevation) or nDSM (height above ground). */
+  target: 'dsm' | 'ndsm'
   definition: string
   overall: MetricBlock
   per_height_band: Record<string, MetricBlock>

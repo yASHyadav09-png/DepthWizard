@@ -25,7 +25,7 @@ const LAYERS: {
   {
     key: 'hillshade',
     label: 'Shaded Relief',
-    caption: 'nDSM hillshade at true vertical scale',
+    caption: 'Hillshade of the displayed surface (nDSM, or DSM for GeoTIFF input) at true vertical scale',
     asset: (r) => r.assets.hillshade,
   },
 ]

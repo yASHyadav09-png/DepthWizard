@@ -3,7 +3,9 @@
  *
  *   X = pixel_x * gsd   (0 at the left image edge, increasing to the right)
  *   Z = pixel_y * gsd   (0 at the top image edge, increasing downwards)
- *   Y = predicted nDSM in metres (height above ground)
+ *   Y = predicted nDSM in metres (height above ground), or for georeferenced DSM jobs
+ *       (Phase 5) elevation - base: a rigid vertical shift, never a scaling
+ *       (services/geo.ts). Real elevation = Y + base.
  *
  * The backend area-averages the full-resolution nDSM onto a w x h grid; grid cell
  * (i, j) covers source pixels [i*sw/w, (i+1)*sw/w) etc., so its value belongs to the
@@ -12,6 +14,8 @@
 import * as THREE from 'three'
 import type { TerrainGrid } from '../types'
 import { decodeHeights } from '../services/terrain'
+import { decodeFloat32 } from '../services/api'
+import { sceneBase } from '../services/geo'
 
 export interface TerrainModel {
   w: number
@@ -20,14 +24,21 @@ export interface TerrainModel {
   dz: number // metres per grid cell along Z
   width: number // extent along X (m)
   depth: number // extent along Z (m)
-  heights: Float32Array // row-major, row 0 = top of the image (Z small)
+  heights: Float32Array // scene Y per cell, row-major, row 0 = top of the image (Z small)
   maxHeight: number
+  /** Metres to add to a scene Y for the product value (elevation of Y = 0); 0 for nDSM jobs. */
+  base?: number
+  /** Height above ground per cell (m). Defaults to `heights` (nDSM jobs). */
+  aboveGround?: Float32Array
 }
 
 export function makeTerrainModel(grid: TerrainGrid, heights?: Float32Array): TerrainModel {
-  const hs = heights ?? decodeHeights(grid)
+  const raw = heights ?? decodeHeights(grid)
+  const base = sceneBase(grid)
+  const hs = base === 0 ? raw : raw.map((v) => v - base)
   let maxHeight = 0
   for (let k = 0; k < hs.length; k += 1) if (hs[k] > maxHeight) maxHeight = hs[k]
+  const n = grid.width * grid.height
   return {
     w: grid.width,
     h: grid.height,
@@ -37,6 +48,8 @@ export function makeTerrainModel(grid: TerrainGrid, heights?: Float32Array): Ter
     depth: grid.plane_depth,
     heights: hs,
     maxHeight,
+    base,
+    aboveGround: grid.ndsm_b64 ? decodeFloat32(grid.ndsm_b64, n) : hs,
   }
 }
 
@@ -45,12 +58,23 @@ export function insideExtent(t: TerrainModel, x: number, z: number): boolean {
 }
 
 /**
- * Height above ground (m) at a real-world point: bilinear interpolation between
- * cell centres, clamped to the edge cells inside the extent, and 0 m (bare ground)
- * outside the imaged extent.
+ * Scene height Y (m) at a real-world point: bilinear interpolation between cell
+ * centres, clamped to the edge cells inside the extent, and 0 (the ground plane: bare
+ * ground for nDSM jobs, the base elevation for DSM jobs) outside the imaged extent.
  */
 export function heightAt(t: TerrainModel, x: number, z: number): number {
-  if (!insideExtent(t, x, z)) return 0
+  return sampleAt(t, t.heights, x, z, 0)
+}
+
+/** Height above ground (m) at a point; null outside the imaged extent. */
+export function aboveGroundAt(t: TerrainModel, x: number, z: number): number | null {
+  if (!insideExtent(t, x, z)) return null
+  return sampleAt(t, t.aboveGround ?? t.heights, x, z, 0)
+}
+
+/** Bilinear sample of a per-cell field between cell centres; `outside` beyond the extent. */
+export function sampleAt(t: TerrainModel, H: Float32Array, x: number, z: number, outside: number): number {
+  if (!insideExtent(t, x, z)) return outside
   const fx = Math.min(Math.max(x / t.dx - 0.5, 0), t.w - 1)
   const fz = Math.min(Math.max(z / t.dz - 0.5, 0), t.h - 1)
   const i0 = Math.floor(fx)
@@ -59,7 +83,6 @@ export function heightAt(t: TerrainModel, x: number, z: number): number {
   const j1 = Math.min(j0 + 1, t.h - 1)
   const u = fx - i0
   const v = fz - j0
-  const H = t.heights
   const a = H[j0 * t.w + i0]
   const b = H[j0 * t.w + i1]
   const c = H[j1 * t.w + i0]

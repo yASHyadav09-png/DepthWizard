@@ -68,8 +68,8 @@ def metric_validity(gsd_m: float | None) -> tuple[str, str]:
     if rel <= GSD_TOLERANCE:
         return "valid", f"Ground resolution {gsd_m:g} m/px is close to the training resolution ({GAMUS_GSD_M} m/px)."
     return "uncertain", (f"Ground resolution {gsd_m:g} m/px differs from the training resolution "
-                         f"({GAMUS_GSD_M} m/px); resampling is not implemented yet (Phase 4), "
-                         f"so heights may be biased.")
+                         f"({GAMUS_GSD_M} m/px). Direct inference at this resolution is less accurate "
+                         f"(Phase 4 study, val RMSE 3.15 m at 0.33 m vs 5.19 m at 1 m); heights may be biased.")
 
 
 @dataclass(frozen=True)

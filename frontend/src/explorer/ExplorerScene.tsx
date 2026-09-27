@@ -7,7 +7,7 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Line, OrbitControls, PointerLockControls, useTexture } from '@react-three/drei'
 import type { TerrainModel } from './terrainModel'
-import { buildTerrainGeometry, cellValueAt, colourAttribute, heightAt } from './terrainModel'
+import { aboveGroundAt, buildTerrainGeometry, cellValueAt, colourAttribute, heightAt } from './terrainModel'
 import { constrainMove, settle } from './physics'
 import type { MoveMode } from './physics'
 import { errorColor, rampColor, slopeColor } from './ramp'
@@ -15,7 +15,7 @@ import type { GroundPoint } from './measure'
 import { sampleProfile } from './measure'
 
 export type NavMode = 'orbit' | MoveMode
-export type Layer = 'rgb' | 'height' | 'slope' | 'error'
+export type Layer = 'rgb' | 'height' | 'elevation' | 'slope' | 'error'
 export type Tool = 'none' | 'profile' | 'measure'
 
 /** Mutable telemetry written by the scene every frame and read by the DOM HUD/minimap. */
@@ -23,7 +23,16 @@ export interface Telemetry {
   camera: { x: number; y: number; z: number }
   dir: { x: number; y: number; z: number }
   groundBelow: number
-  cursor: { x: number; z: number; height: number; slope: number | null; error: number | null; distance: number } | null
+  /** height = scene Y of the surface (elevation - base for DSM jobs); aboveGround = nDSM there. */
+  cursor: {
+    x: number
+    z: number
+    height: number
+    aboveGround: number | null
+    slope: number | null
+    error: number | null
+    distance: number
+  } | null
   pointerLocked: boolean
 }
 
@@ -78,7 +87,8 @@ function Terrain({
   slope,
   textureUrl,
   layer,
-  displayMax,
+  heightMax,
+  elevRange,
   meshRef,
   telemetry,
   onPick,
@@ -89,7 +99,8 @@ function Terrain({
   slope: Float32Array
   textureUrl: string
   layer: Layer
-  displayMax: number
+  heightMax: number
+  elevRange: [number, number]
   meshRef: React.RefObject<THREE.Mesh | null>
   telemetry: Telemetry
   onPick?: (p: GroundPoint) => void
@@ -105,9 +116,11 @@ function Terrain({
         ? colourAttribute(slope, 0, 90, slopeColor)
         : layer === 'error' && errorField
           ? colourAttribute(errorField, -errorLimit, errorLimit, errorColor)
-          : colourAttribute(terrain.heights, 0, displayMax, rampColor),
+          : layer === 'elevation'
+            ? colourAttribute(terrain.heights, elevRange[0], elevRange[1], rampColor)
+            : colourAttribute(terrain.aboveGround ?? terrain.heights, 0, heightMax, rampColor),
     )
-  }, [geometry, terrain, slope, layer, displayMax, errorField, errorLimit])
+  }, [geometry, terrain, slope, layer, heightMax, elevRange, errorField, errorLimit])
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => {
     texture.colorSpace = THREE.SRGBColorSpace
@@ -127,6 +140,7 @@ function Terrain({
           x: e.point.x,
           z: e.point.z,
           height: heightAt(terrain, e.point.x, e.point.z),
+          aboveGround: aboveGroundAt(terrain, e.point.x, e.point.z),
           slope: cellValueAt(terrain, slope, e.point.x, e.point.z),
           error: errorField ? finiteOrNull(cellValueAt(terrain, errorField, e.point.x, e.point.z)) : null,
           distance: e.distance,
@@ -239,6 +253,7 @@ function Telemetrist({
             x: hit.point.x,
             z: hit.point.z,
             height: heightAt(terrain, hit.point.x, hit.point.z),
+            aboveGround: aboveGroundAt(terrain, hit.point.x, hit.point.z),
             slope: cellValueAt(terrain, slope, hit.point.x, hit.point.z),
             error: errorField ? finiteOrNull(cellValueAt(terrain, errorField, hit.point.x, hit.point.z)) : null,
             distance: hit.distance,
@@ -277,7 +292,8 @@ export function ExplorerScene({
   slope,
   textureUrl,
   layer,
-  displayMax,
+  heightMax,
+  elevRange,
   mode,
   speed,
   telemetry,
@@ -297,7 +313,8 @@ export function ExplorerScene({
   slope: Float32Array
   textureUrl: string
   layer: Layer
-  displayMax: number
+  heightMax: number
+  elevRange: [number, number]
   mode: NavMode
   speed: number
   telemetry: Telemetry
@@ -332,7 +349,8 @@ export function ExplorerScene({
         slope={slope}
         textureUrl={textureUrl}
         layer={layer}
-        displayMax={displayMax}
+        heightMax={heightMax}
+        elevRange={elevRange}
         meshRef={meshRef}
         telemetry={telemetry}
         onPick={tool !== 'none' ? onPick : undefined}
@@ -340,7 +358,7 @@ export function ExplorerScene({
         errorLimit={errorLimit}
       />
       <Picks terrain={terrain} picks={picks} />
-      {/* bare ground around the imaged extent (0 m, as heightAt assumes) */}
+      {/* ground around the imaged extent at Y = 0, as heightAt assumes (0 m nDSM, or the base elevation of a DSM) */}
       <mesh rotation-x={-Math.PI / 2} position={[centre.x, -0.05, centre.z]}>
         <planeGeometry args={[size * 12, size * 12]} />
         <meshStandardMaterial color="#1e293b" roughness={1} />

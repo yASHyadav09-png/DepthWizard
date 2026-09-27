@@ -15,12 +15,16 @@ import type { HealthResponse, PipelineStage, ProcessResult, ViewMode } from './t
 
 const DEFAULT_EXAGGERATION = 1 // true vertical scale
 
+const isGeoTiff = (f: File) => /\.tiff?$/i.test(f.name) || /^image\/tiff?$/i.test(f.type)
+
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [healthError, setHealthError] = useState<string | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [gsd, setGsd] = useState('')
+  const [gcpFile, setGcpFile] = useState<File | null>(null)
+  const [gcpModel, setGcpModel] = useState<'offset' | 'plane'>('offset')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [stage, setStage] = useState<PipelineStage>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -82,7 +86,8 @@ export default function App() {
 
   const setPreview = useCallback((next: File | null) => {
     if (previewRef.current) URL.revokeObjectURL(previewRef.current)
-    const url = next ? URL.createObjectURL(next) : null
+    // browsers cannot display TIFF: GeoTIFFs get their preview from the processed result
+    const url = next && !isGeoTiff(next) ? URL.createObjectURL(next) : null
     previewRef.current = url
     setPreviewUrl(url)
   }, [])
@@ -101,6 +106,7 @@ export default function App() {
       setError(null)
       setFile(selected)
       setPreview(selected)
+      if (!isGeoTiff(selected)) setGcpFile(null)
     },
     [setPreview],
   )
@@ -108,6 +114,7 @@ export default function App() {
   const handleReset = useCallback(() => {
     abortRef.current?.abort()
     setFile(null)
+    setGcpFile(null)
     setPreview(null)
     setResult(null)
     setError(null)
@@ -120,7 +127,8 @@ export default function App() {
 
   const handleGenerate = useCallback(async () => {
     if (!file) return
-    const gsdTrim = gsd.trim()
+    const geoTiff = isGeoTiff(file)
+    const gsdTrim = geoTiff ? '' : gsd.trim() // GeoTIFF: the resolution comes from the file
     const gsdM = gsdTrim === '' ? null : Number(gsdTrim)
     if (gsdM !== null && !(Number.isFinite(gsdM) && gsdM >= 0.01 && gsdM <= 100)) {
       setStage('error')
@@ -140,7 +148,12 @@ export default function App() {
     const toInferring = window.setTimeout(() => setStage('inferring'), 350)
 
     try {
-      const payload = await processImage(file, gsdM, controller.signal)
+      const payload = await processImage(
+        file,
+        gsdM,
+        controller.signal,
+        geoTiff && gcpFile ? { file: gcpFile, model: gcpModel } : null,
+      )
       window.clearTimeout(toInferring)
       setStage('building')
       setResult(payload)
@@ -159,7 +172,7 @@ export default function App() {
           : 'Processing failed for an unknown reason.',
       )
     }
-  }, [file, gsd])
+  }, [file, gsd, gcpFile, gcpModel])
 
   const hasTerrain = Boolean(result)
 
@@ -180,6 +193,10 @@ export default function App() {
               maxUploadMb={health?.max_upload_mb ?? null}
               gsd={gsd}
               onGsd={setGsd}
+              gcpFile={gcpFile}
+              onGcpFile={setGcpFile}
+              gcpModel={gcpModel}
+              onGcpModel={setGcpModel}
               onSelect={handleSelect}
               onGenerate={handleGenerate}
               onReset={handleReset}
@@ -190,7 +207,11 @@ export default function App() {
           {/* ---- centre: 3D terrain + rasters ---- */}
           <div className="order-1 flex min-w-0 flex-col gap-4 lg:col-span-2 xl:order-none xl:col-span-1">
             <Panel
-              title="3 · 3D Terrain (height above ground)"
+              title={
+                result?.terrain.surface_kind === 'dsm'
+                  ? '3 · 3D Terrain (surface elevation, EGM2008)'
+                  : '3 · 3D Terrain (height above ground)'
+              }
               aside={
                 result ? (
                   <button
@@ -250,9 +271,10 @@ export default function App() {
 
       <footer className="mx-auto w-full max-w-[1800px] px-5 pt-1 pb-5">
         <p className="text-[11px] text-slate-600">
-          DepthWizard Phase 3 · height above ground (nDSM, metres) from a single
-          top-down view with Depth Anything V2 Small fine-tuned on GAMUS. Resolution
-          handling (Phase 4) and GeoTIFF / absolute DSM (Phase 5) arrive next.
+          DepthWizard · height above ground (nDSM, metres) from a single top-down view
+          with Depth Anything V2 Small fine-tuned on GAMUS. GeoTIFF input adds an absolute
+          DSM (Copernicus GLO-30 ground + nDSM, metres above EGM2008), with optional GCP
+          correction and GeoTIFF export.
         </p>
       </footer>
     </div>

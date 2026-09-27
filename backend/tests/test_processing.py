@@ -73,7 +73,7 @@ def test_rejects_empty_and_corrupt_uploads():
 
 def test_rejects_disallowed_extension_and_content_type():
     with pytest.raises(errors.InvalidImageError):
-        image_io.validate_upload("terrain.tif", "image/tiff", b"x" * 100)
+        image_io.validate_upload("terrain.bmp", "image/bmp", b"x" * 100)
     with pytest.raises(errors.InvalidImageError):
         image_io.validate_upload("terrain.png", "application/pdf", b"x" * 100)
 

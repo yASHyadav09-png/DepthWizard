@@ -42,10 +42,15 @@ export async function processImage(
   file: File,
   gsdM: number | null,
   signal?: AbortSignal,
+  gcps?: { file: File; model: 'offset' | 'plane' } | null,
 ): Promise<ProcessResult> {
   const form = new FormData()
   form.append('image', file)
   if (gsdM !== null) form.append('gsd_m', String(gsdM))
+  if (gcps) {
+    form.append('gcps', gcps.file)
+    form.append('gcp_model', gcps.model)
+  }
 
   let response: Response
   try {
@@ -71,9 +76,16 @@ export async function getResult(jobId: string): Promise<ProcessResult> {
   return response.json()
 }
 
-export async function validateJob(jobId: string, reference: File): Promise<ValidationResult> {
+export type ValidationTarget = 'auto' | 'dsm' | 'ndsm'
+
+export async function validateJob(
+  jobId: string,
+  reference: File,
+  target: ValidationTarget = 'auto',
+): Promise<ValidationResult> {
   const form = new FormData()
   form.append('reference', reference)
+  form.append('target', target)
   const response = await fetch(`${API_BASE}/api/results/${jobId}/validate`, { method: 'POST', body: form })
   if (!response.ok) throw await parseError(response)
   return response.json()
