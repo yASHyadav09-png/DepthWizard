@@ -1,0 +1,58 @@
+name: phase6_scaleaug
+seed: 0
+phase1_commit: ef540d07840ab8f011f182b6ea6e5187b08ea480
+phase2b_run: runs/20260926-003630_phase2b_partial
+subset: full
+model:
+  id: depth-anything/Depth-Anything-V2-Small-hf
+  revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
+trainable:
+  mode: partial
+  unfreeze_last_blocks: 4
+init_from: runs/20260926-003630_phase2b_partial/checkpoints/best.pt
+init_scale:
+  n_tiles: 50
+  seed: 0
+data:
+  crop: 518
+  workers: 6
+  jitter:
+    brightness: 0.1
+    contrast: 0.1
+    saturation: 0.1
+    hue: 0.02
+  scale_aug:
+    p: 0.5
+    min: 1.0
+    max: 1.95
+loss:
+  lambda_grad: 0.5
+  grad_scales: 4
+optim:
+  lr: 2.5e-05
+  encoder_lr: 2.5e-06
+  weight_decay: 0.01
+  betas:
+  - 0.9
+  - 0.999
+  warmup_steps: 300
+  schedule: cosine
+  grad_clip: 1.0
+batch:
+  size: 8
+  accum: 1
+  fallbacks:
+  - - 4
+    - 2
+  - - 2
+    - 4
+epochs: 10
+amp: bf16
+eval:
+  every_epochs: 2
+  amp: bf16
+  workers: 4
+  gsds:
+  - 0.33
+  - 0.66
+log_every: 50

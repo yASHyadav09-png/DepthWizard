@@ -1,0 +1,59 @@
+{
+  "name": "phase6_scaleaug",
+  "started": "2026-09-27T13:33:53",
+  "seed": 0,
+  "git": {
+    "commit": "97d4354da0eb00d30f4b30e4a5b4d6e194555b34",
+    "dirty": false
+  },
+  "python": "3.11.0",
+  "torch": "2.11.0+cu128",
+  "cuda_device": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "phase1_commit": "ef540d07840ab8f011f182b6ea6e5187b08ea480",
+  "params": {
+    "trainable": 9829441,
+    "frozen": 14955648,
+    "total": 24785089
+  },
+  "init_from": {
+    "path": "runs/20260926-003630_phase2b_partial/checkpoints/best.pt",
+    "sha256": "e55ec4ca7bda6b74ecef2e5b78253e4dec79b86e40b5e897e07d4d994eafaeb9",
+    "source_epoch": 19,
+    "source_step": 12500,
+    "source_best": {
+      "rmse": 3.147597388953567,
+      "epoch": 19,
+      "step": 12500
+    },
+    "s0": 3.659839630126953,
+    "loaded_keys": 137
+  },
+  "batch": {
+    "size": 8,
+    "accum": 1,
+    "effective": 8
+  },
+  "param_groups": {
+    "decoder": {
+      "lr": 2.5e-05,
+      "tensors": 64,
+      "params": 2728513
+    },
+    "encoder": {
+      "lr": 2.5e-06,
+      "tensors": 72,
+      "params": 7100928
+    }
+  },
+  "schedule": {
+    "steps_per_epoch": 625,
+    "total_opt_steps": 6250
+  },
+  "best": {
+    "rmse": 3.105184975792316,
+    "select": 3.1354746246418266,
+    "epoch": 9,
+    "step": 6250
+  },
+  "finished": "2026-09-27T15:31:00"
+}

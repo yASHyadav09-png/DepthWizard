@@ -1,0 +1,12 @@
+{
+  "name": "phase6_aois_phase6_scaleaug",
+  "started": "2026-09-27T15:51:11",
+  "seed": null,
+  "git": {
+    "commit": "97d4354da0eb00d30f4b30e4a5b4d6e194555b34",
+    "dirty": true
+  },
+  "python": "3.11.0",
+  "torch": "2.11.0+cu128",
+  "cuda_device": "NVIDIA GeForce RTX 5050 Laptop GPU"
+}

@@ -1,0 +1,97 @@
+{
+  "definition": "delta = candidate - reference(2b); paired bootstrap, 2000 resamples, seed 0",
+  "R1_val_0.66m": {
+    "RMSE": {
+      "model": 3.165764273491335,
+      "reference": 3.8690917987255213,
+      "delta": -0.7033275252341862,
+      "ci95": [
+        -0.7810158455685502,
+        -0.6334096495353131
+      ],
+      "significantly_better": true,
+      "significantly_worse": false
+    },
+    "MAE": {
+      "model": 1.6094347393566815,
+      "reference": 1.9776661533893236,
+      "delta": -0.36823141403264215,
+      "ci95": [
+        -0.41197263429084036,
+        -0.32868034735161417
+      ],
+      "significantly_better": true,
+      "significantly_worse": false
+    },
+    "pass": true,
+    "criterion": "upper95 < 0"
+  },
+  "R2_val_0.33m": {
+    "RMSE": {
+      "model": 3.105184975792316,
+      "reference": 3.1475973889535656,
+      "delta": -0.04241241316124977,
+      "ci95": [
+        -0.06846730438486118,
+        -0.016984298009460386
+      ],
+      "significantly_better": true,
+      "significantly_worse": false
+    },
+    "MAE": {
+      "model": 1.529600597573797,
+      "reference": 1.5558960695183321,
+      "delta": -0.026295471944535187,
+      "ci95": [
+        -0.03784730227267362,
+        -0.015870301635026132
+      ],
+      "significantly_better": true,
+      "significantly_worse": false
+    },
+    "pass": true,
+    "criterion": "upper95 < +0.1"
+  },
+  "R3_naip_pooled": {
+    "RMSE": {
+      "model": 2.520900964430775,
+      "reference": 2.140905853105888,
+      "delta": 0.3799951113248867,
+      "ci95": [
+        0.3185835089498653,
+        0.44239821946705216
+      ],
+      "significantly_better": false,
+      "significantly_worse": true
+    },
+    "MAE": {
+      "model": 1.2484990765131114,
+      "reference": 1.0782913824461768,
+      "delta": 0.1702076940669346,
+      "ci95": [
+        0.13956891841244318,
+        0.20053428284106226
+      ],
+      "significantly_better": false,
+      "significantly_worse": true
+    },
+    "pass": false,
+    "criterion": "upper95 < 0",
+    "n_blocks": 500,
+    "aois": [
+      "carmel_suburb",
+      "champaign_farm",
+      "del_rio_arid",
+      "grayling_forest",
+      "pittsburgh"
+    ]
+  },
+  "inputs": {
+    "ref_gsd": "runs\\20260926-124248_phase4_gsd_study",
+    "cand_gsd": "runs\\20260927-153217_phase6_gsd_scaleaug",
+    "ref_aoi": "runs\\20260927-131340_phase6_aois_phase2b",
+    "cand_aoi": "runs\\20260927-155111_phase6_aois_phase6_scaleaug",
+    "out": "runs\\20260927-133353_phase6_scaleaug\\decision.json"
+  },
+  "recommend_candidate": false
+}

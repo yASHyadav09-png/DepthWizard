@@ -1,0 +1,77 @@
+{
+  "definition": "delta = metric_B - metric_A on the same tiles and grid; paired tile bootstrap, 2000 resamples",
+  "results": {
+    "0.50": {
+      "RMSE": {
+        "model": 3.419098788582845,
+        "reference": 3.02098709691058,
+        "delta": 0.39811169167226534,
+        "ci95": [
+          0.3510473560547527,
+          0.44536005367570236
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      },
+      "MAE": {
+        "model": 1.6899010568871207,
+        "reference": 1.5016029258115282,
+        "delta": 0.18829813107559246,
+        "ci95": [
+          0.1698217294594591,
+          0.20757063955057523
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    },
+    "0.66": {
+      "RMSE": {
+        "model": 5.2343217322625515,
+        "reference": 3.165764273491335,
+        "delta": 2.0685574587712163,
+        "ci95": [
+          1.8981190529741758,
+          2.2356023517030916
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      },
+      "MAE": {
+        "model": 2.4433901212944913,
+        "reference": 1.6094347393566815,
+        "delta": 0.8339553819378098,
+        "ci95": [
+          0.7438524822004232,
+          0.9246321149773767
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    },
+    "1.00": {
+      "RMSE": {
+        "model": 7.3659480794067616,
+        "reference": 4.038498769073555,
+        "delta": 3.327449310333207,
+        "ci95": [
+          2.998444243986106,
+          3.658023168958569
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      },
+      "MAE": {
+        "model": 3.487679427901136,
+        "reference": 2.092149540726911,
+        "delta": 1.395529887174225,
+        "ci95": [
+          1.228282668110003,
+          1.5622090165896076
+        ],
+        "significantly_better": false,
+        "significantly_worse": true
+      }
+    }
+  }
+}

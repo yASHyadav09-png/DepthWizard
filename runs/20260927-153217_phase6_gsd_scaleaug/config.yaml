@@ -1,0 +1,16 @@
+name: phase6_gsd_scaleaug
+split: val
+model_run: 20260927-133353_phase6_scaleaug
+gsds:
+- 0.33
+- 0.5
+- 0.66
+- 1.0
+base_gsd: 0.33
+tile: 1024
+n_tiles: 859
+rgb_downsample: PIL BOX (area average)
+gt_downsample: area average of valid pixels, valid if >=50%
+cls_downsample: nearest
+strategy_B_upsample: PIL BICUBIC to 1024 px
+strategy_B_back_to_grid: area average (BOX)
