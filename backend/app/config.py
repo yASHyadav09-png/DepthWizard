@@ -21,8 +21,8 @@ class Settings:
     """Runtime settings, overridable through environment variables."""
 
     APP_NAME = "DepthWizard"
-    APP_STAGE = "Phase 5 - nDSM (JPG/PNG) and absolute DSM (GeoTIFF + GLO-30)"
-    VERSION = "0.5.0"
+    APP_STAGE = "nDSM (JPG/PNG) and absolute DSM (GeoTIFF + GLO-30)"
+    VERSION = "1.0.0"
 
     # --- Model -----------------------------------------------------------
     # A Phase 2 training run; its checkpoints/best.pt is loaded. Default: the

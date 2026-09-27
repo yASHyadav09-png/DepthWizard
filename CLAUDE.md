@@ -5,15 +5,17 @@ Solo developer, Windows 11, RTX 5050 Laptop (8 GB VRAM, sm_120).
 
 ## Read first
 - `docs/progress.md`: current phase, what is done, next steps
+- `docs/results_summary.md`: all headline numbers in one place
 - `docs/phase0_data_report.md`: verified GAMUS format, units, NoData rule
 
 ## Environment
 - ML venv: `.venv` (Python 3.11, torch 2.11 + cu128). Run with `.venv/Scripts/python.exe`.
-- `backend/.venv` belongs to the older Stage-1 prototype (`backend/`, `frontend/`). Don't touch it until Phase 3.
-- Tests: `.venv/Scripts/python.exe -m pytest -q`
+- The backend also runs in `.venv` (`backend/.venv` is retired). Demo: `start_demo.ps1 [-Offline]`.
+- Tests: `.venv/Scripts/python.exe -m pytest -q` (ML), `cd backend; ../.venv/Scripts/python.exe -m pytest -q`, `cd frontend; npm test`
 
 ## Layout
-- `depthwizard/` python package: `data/` (gamus.py, download.py), `eval/metrics.py`, `utils/runs.py`
+- `depthwizard/` python package: `data/` (gamus.py, download.py, coarsen.py), `models/`, `eval/`, `geo/` (GeoTIFF, DEM, GCP), `inference.py`, `utils/runs.py`
+- `backend/` FastAPI app, `frontend/` React + R3F viewer/Explorer, `sample_data/` demo inputs
 - `scripts/`: runnable entry points
 - `configs/subsets/*.yaml`: dataset versions (tile ids per split), tracked in git
 - `data/`: downloaded data (gitignored). `runs/<stamp>_<name>/`: experiments, `runs/results.csv`: all results

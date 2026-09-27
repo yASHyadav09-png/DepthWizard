@@ -1,7 +1,7 @@
 """DepthWizard backend entrypoint.
 
 SIH 2026 - PS 26175 (ISRO): Single-View Height Estimation and 3D Flythrough.
-Phase 3: metric nDSM (height above ground, metres) from JPG/PNG with the
+Metric nDSM (height above ground, metres) from JPG/PNG, and a georeferenced DSM from GeoTIFF, with the
 trained DA-V2-S model (see docs/phase3_demo.md).
 
     uvicorn app.main:app --reload --port 8000
@@ -51,7 +51,8 @@ app = FastAPI(
     title="DepthWizard API",
     description=(
         "Single-view height estimation (SIH 2026, PS 26175 / ISRO). "
-        "Phase 3 predicts nDSM (height above ground, metres); not yet georeferenced."
+        "JPG/PNG -> nDSM (height above ground, metres); GeoTIFF -> georeferenced DSM "
+        "(Copernicus GLO-30 ground + nDSM, metres above EGM2008) with optional GCP correction."
     ),
     version=settings.VERSION,
     lifespan=lifespan,
@@ -115,7 +116,8 @@ def root() -> dict:
         "version": settings.VERSION,
         "stage": settings.APP_STAGE,
         "problem_statement": "SIH 2026 - 26175 (ISRO)",
-        "output": "nDSM: height above ground in metres (not georeferenced yet)",
+        "output": "JPG/PNG: nDSM, height above ground in metres; GeoTIFF: DSM in metres above EGM2008 + GeoTIFFs",
         "docs": "/docs",
-        "endpoints": ["/api/health", "/api/process", "/api/results/{job_id}"],
+        "endpoints": ["/api/health", "/api/process", "/api/results/{job_id}", "/api/results/{job_id}/validate",
+                      "/api/jobs"],
     }

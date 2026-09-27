@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { FlyControls, Grid, OrbitControls, useProgress } from '@react-three/drei'
 import type { ProcessResult, ViewMode } from '../types'
 import { assetUrl } from '../services/api'
-import { datumLabel, isDsm } from '../services/geo'
+import { datumLabel, formatGsd, isDsm } from '../services/geo'
 import { RAMP, TerrainMesh } from './TerrainMesh'
 import type { HoverInfo } from './TerrainMesh'
 import { Badge } from './ui'
@@ -223,7 +223,7 @@ export function TerrainViewer({
         </Badge>
         {hp.crs && <Badge tone="neutral">{hp.crs}</Badge>}
         <Badge tone="neutral">
-          {grid.gsd_m} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
+          {formatGsd(grid.gsd_m)} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
         </Badge>
         <Badge tone="neutral">
           {Math.round(grid.plane_width)} × {Math.round(grid.plane_depth)} m

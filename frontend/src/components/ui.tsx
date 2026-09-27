@@ -69,7 +69,6 @@ export function Dot({ tone = 'relief' }: { tone?: 'relief' | 'warn' | 'danger' }
   )
 }
 
-/** The disclaimer that must never be missing from a Stage 1 screen. */
 /** States how far the metres on screen can be trusted (height_product.metric_validity). */
 export function MetricNotice({
   validity,

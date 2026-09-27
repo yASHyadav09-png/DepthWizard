@@ -10,7 +10,7 @@
 | 5 Absolute DSM (DEM, CRS, vertical datum) + GCP correction | **done** 2026-09-27 (ground filter: 150 m kept, user 2026-09-27) | valid GeoTIFF out (tested with rasterio; manual QGIS check pending) |
 | 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) + scale-aug fine-tune test on real ~0.6 m NAIP | **done** 2026-09-27: 6b NOT adopted (fails real-NAIP rule R3); 2b stays | per-landscape metrics |
 | 7 Viewer features (fly mode, probe, profile, slope, validation panel) | **7a-7e done** 2026-09-26 | see docs/phase7_explorer.md |
-| 8 Polish, docs, packaging | | |
+| 8 Polish, docs, packaging | **done** 2026-09-27 (v1.0.0) | one-command offline demo; README; results summary; all tests pass |
 
 ## Phase 0 summary
 See `docs/phase0_data_report.md`. Key facts: 8,724 tiles in 3 cities (DC/NYC/PHL); val has no NYC;
@@ -81,6 +81,20 @@ coarse val (0.66 m RMSE 3.87 -> 3.17) and slightly better at 0.33 m (3.15 -> 3.1
 See `docs/phase7_explorer.md`. Full-screen 3D Explorer in real metres: Orbit/Fly/Walk with terrain-constrained
 movement (fly >= 2 m, walk eye 1.7 m), minimap, HUD, slope layer, profile + measure, validation panel
 (same metric code as evaluation), screenshot + export.
+
+## Phase 8 summary (v1.0.0)
+- `start_demo.ps1` / `start_demo.bat` (`-Offline`): checks the environment, starts backend + frontend,
+  waits for the model, opens the app. Verified offline: model from the Hugging Face cache, DEMs from
+  `data/geo/`.
+- Demo inputs: `scripts/prepare_demo_data.py` -> `sample_data/geo/` (3 NAIP GeoTIFFs, LiDAR DSM references,
+  example GCPs) next to `sample_data/gamus_val/`.
+- Docs: new README (quick start, results, limitations, credits), `docs/results_summary.md` (presentation
+  numbers), `docs/demo-script.md` (5-minute judges' walkthrough), `docs/pipeline.md` (current pipeline).
+- Requirements: `requirements-ml.txt` now lists the backend and geospatial packages; lock regenerated.
+- Final check: web path = evaluation (max 3e-13 m); PNG and 3 GeoTIFF uploads + validation offline;
+  tests 41 ML, 40 backend (incl. the real-model test), 34 frontend.
+- Open (manual): open exported GeoTIFFs in QGIS; mouse-look check in the Explorer; minimap teleport
+  (postponed).
 
 ## Final test evaluation (FROZEN)
 See `docs/final_test_report.md`, run `runs/20260926-141407_final_test` (2,861 tiles incl. 1,000 NYC).

@@ -11,7 +11,7 @@ import { useProgress } from '@react-three/drei'
 import type { ProcessResult, ValidationResult } from '../types'
 import { ApiError, assetUrl, decodeFloat32, validateJob } from '../services/api'
 import type { ValidationTarget } from '../services/api'
-import { datumLabel, formatLonLat, isDsm, mapCoords } from '../services/geo'
+import { datumLabel, formatGsd, formatLonLat, isDsm, mapCoords } from '../services/geo'
 import { Badge } from '../components/ui'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ExplorerScene, newTelemetry } from './ExplorerScene'
@@ -196,7 +196,7 @@ export function Explorer({ result, onExit }: { result: ProcessResult; onExit: ()
         <span className="font-mono text-xs text-slate-100">{result.source.filename}</span>
         <span className="font-mono text-[11px] text-slate-500">
           {Math.round(grid.plane_width)} × {Math.round(grid.plane_depth)} m ·{' '}
-          {grid.gsd_m} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
+          {formatGsd(grid.gsd_m)} m/px{hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}
         </span>
         <Badge tone={valid ? 'relief' : 'warn'}>
           {dsm ? `Surface elevation · m ${datumLabel(result)}` : valid ? 'Height above ground · m' : 'Estimated m'}

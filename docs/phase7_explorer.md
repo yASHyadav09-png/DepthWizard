@@ -1,7 +1,8 @@
 # Phase 7: 3D Explorer (7a, 7c, 7b, 7d, 7e)
 
-Status: **implemented and checked in the browser** (2026-09-26). No Phase 5 functionality (GeoTIFF,
-absolute DSM, DEM) is included.
+Status: **implemented and checked in the browser** (2026-09-26). Built without Phase 5 functionality;
+the Phase 5 integration (elevation, map coordinates, GeoTIFF export/validation) is described in
+`docs/phase5_geospatial.md` (Viewer section).
 
 ## Flow
 Dashboard (upload → processing → preview) → **"Enter 3D Explorer ⛶"** → full-screen Explorer →

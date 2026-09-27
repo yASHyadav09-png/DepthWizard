@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProcessResult, TerrainGrid } from '../types'
-import { formatLonLat, mapCoords, sceneBase } from './geo'
+import { formatGsd, formatLonLat, mapCoords, sceneBase } from './geo'
 import { aboveGroundAt, heightAt, makeTerrainModel } from '../explorer/terrainModel'
 import { constrainMove, EYE_HEIGHT_M } from '../explorer/physics'
 
@@ -85,5 +85,13 @@ describe('map coordinates', () => {
   it('returns null without a transform', () => {
     const r = { ...result, height_product: { transform: null } } as unknown as ProcessResult
     expect(mapCoords(r, 1, 1)).toBeNull()
+  })
+})
+
+describe('formatGsd', () => {
+  it('hides floating-point noise from GeoTIFF transforms', () => {
+    expect(formatGsd(0.599999999999993)).toBe('0.6')
+    expect(formatGsd(0.33)).toBe('0.33')
+    expect(formatGsd(0.3048006096)).toBe('0.304801')
   })
 })

@@ -62,3 +62,8 @@ export function datumLabel(result: ProcessResult): string {
   if (!vd) return 'above ground'
   return vd.includes('EGM2008') ? 'EGM2008' : vd
 }
+
+/** Ground resolution for display: 6 significant digits (0.599999999999993 -> "0.6"). */
+export function formatGsd(gsdM: number): string {
+  return String(Number(gsdM.toPrecision(6)))
+}

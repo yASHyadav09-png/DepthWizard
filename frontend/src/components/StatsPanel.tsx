@@ -1,6 +1,7 @@
 import type { ProcessResult } from '../types'
 import { assetUrl } from '../services/api'
 import { MetricNotice, Panel } from './ui'
+import { formatGsd } from '../services/geo'
 
 function Row({
   label,
@@ -72,7 +73,7 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
         <Row label="Image" value={`${result.source.width} × ${result.source.height} px`} />
         <Row
           label="Ground resolution"
-          value={`${hp.gsd_m} m/px${hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}`}
+          value={`${formatGsd(hp.gsd_m)} m/px${hp.gsd_source === 'assumed_training_gsd' ? ' (assumed)' : ''}`}
         />
         <Row
           label="Footprint"

@@ -6,6 +6,9 @@ val RMSE 3.148 m). The test split was not used; demo samples come from **val**.
 
 ## How to run (Windows, project `.venv`)
 
+Simplest (Phase 8): `start_demo.ps1` (or `start_demo.bat`, `-Offline` without internet), see README.md.
+Manual equivalent:
+
 ```bash
 # terminal 1: backend (loads the model on the GPU at startup, ~8 s)
 E:\SIH_Project\DepthWizard\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir E:\SIH_Project\DepthWizard\backend --host 127.0.0.1 --port 8000

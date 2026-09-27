@@ -1,82 +1,58 @@
-# 5-minute demo script — SIH judges
+# 5-minute demo script (SIH judges)
 
-A tight walkthrough that shows the pipeline is *real*, not a mockup.
+Goal: show that the heights are real metres, checked against LiDAR, and that the 3D view is built on them.
 
-## Before the judges arrive
+## Before the judges arrive (5 min)
+1. `.\start_demo.ps1 -Offline` (or double-click `start_demo.bat`). Wait for "DepthWizard is running".
+   Offline mode needs no internet: DEMs for the demo areas are cached in `data/geo/`, the model in the
+   Hugging Face cache.
+2. Do one throwaway run (any PNG) so the GPU is warm.
+3. Have Explorer open in a second tab on a finished GeoTIFF job (`?job=<id>` in the URL) as a fallback.
+4. Inputs: `sample_data/gamus_val/` (PNGs + `.npy` LiDAR references) and `sample_data/geo/`
+   (NAIP GeoTIFFs + `*_lidar_dsm.tif` references + `*_gcps_example.csv`).
 
-1. Backend running, model already loaded (the first request after a cold start
-   pays the download/warm-up cost — trigger one throwaway run beforehand):
-   ```
-   cd depthwizard/backend && .venv\Scripts\activate
-   uvicorn app.main:app --port 8000
-   ```
-2. Frontend running: `cd depthwizard/frontend && npm run dev`
-3. Two or three images ready in `sample_data/` — ideally one aerial/drone shot of
-   buildings and one landscape.
-4. Browser at <http://localhost:5173>, window maximised.
+## 0:00 Problem (30 s)
+"Height maps normally need stereo pairs, LiDAR or radar. We estimate height above ground in metres
+from one ordinary top-down image, turn it into an absolute elevation model when the image is
+georeferenced, and let you explore it in 3D."
 
-## The walkthrough
+## 0:30 One image → metres (1 min)
+1. Upload `sample_data/gamus_val/PHL_6325_rgb.png` (typical tile, RMSE 2.3 m), ground resolution **0.33**.
+   Generate (~2 s). For tall buildings use `DC_48_31_rgb.png`.
+2. Point at: height map, statistics in metres, the green "valid resolution" badge, model provenance
+   (run, checkpoint hash, GPU).
+3. Hover a building: height in metres.
+4. Say: "Trained on GAMUS LiDAR heights. On 2,861 unseen test tiles, evaluated once: RMSE 4.7 m, MAE 2.0 m,
+   versus 7.3 m for the best calibration of a generic depth model."
 
-**0:00 — Frame the problem.**
-"PS 26175 asks for height from a *single* view. Conventional DSMs need stereo,
-LiDAR or InSAR. We estimate height from one ordinary photo."
+## 1:30 Proof against LiDAR (45 s)
+1. Enter 3D Explorer → Validation → upload the tile's `*_lidar_ndsm.npy`.
+2. Show RMSE/MAE/bias and switch the layer to **Error vs reference** (blue = too low, red = too high).
+3. Say honestly: "Tall buildings are underestimated; that is our main known limitation."
 
-**0:30 — Show the header.** Point at the live badges: `Stage 1 · Relative DSM`,
-`Depth Anything V2 Small`, `CUDA (…)`, `Backend online`. These are read from
-`/api/health` — the device badge proves inference is really on the GPU.
+## 2:15 GeoTIFF → absolute DSM (1 min 15 s)
+1. Back on the dashboard, upload `sample_data/geo/pittsburgh_naip.tif`, add
+   `pittsburgh_gcps_example.csv` (offset). Generate (~10 s).
+2. Point at: CRS EPSG:26917 read from the file, 0.6 m resolution (flagged: outside the trained band),
+   elevation 218-371 m above EGM2008, DEM = Copernicus GLO-30 (cached), GCP offset applied.
+3. Download buttons: DSM / DTM / nDSM GeoTIFFs keep the input CRS (open in QGIS).
+4. Explorer → Validation → upload `pittsburgh_lidar_dsm.tif`: the NAVD88 datum is converted
+   automatically. DSM RMSE ~5 m on a hilly city.
 
-**1:00 — Upload and run.** Drag an image in, press **Generate Terrain**. Narrate
-the status stepper as it advances. When it completes, point at the **per-stage
-timings** — real inference milliseconds, not an animation.
+## 3:30 Fly through (1 min)
+1. Elevation layer, then **Fly** (key 2): click to capture the mouse, W A S D, Space/C, wheel = speed.
+   "The camera can't enter the surface: every step is checked against the terrain, and it stays ≥ 2 m up."
+2. **Walk** (key 3): eye height 1.7 m, follows the ground; walls block you.
+3. HUD: elevation, height above ground, easting/northing, lat/lon under the cursor.
+4. **Profile** tool across the valley: elevation profile in metres. **Shot** saves a PNG.
 
-**1:45 — The raster products.** Original RGB → depth map → relative DSM. Click
-the DSM to enlarge; the shaded relief makes the structure obvious.
+## 4:30 Honesty and next steps (30 s)
+"We validated on five real US landscapes against USGS LiDAR (RMSE 2.2 m). We also rejected our own
+fine-tune because it looked better on simulated data but was worse on real imagery. Next: Indian imagery
+with Indian reference heights, and better handling of tall buildings."
 
-**2:15 — The 3D terrain.** Rotate, zoom, pan. Say out loud: *"this is the height
-field, meshed — the original photo is projected on as texture."*
-
-**2:45 — Prove the geometry is real.**
-- Drag **Height exaggeration** from 0 to 1. The surface flattens and rises — the
-  relief is data, not a texture trick.
-- Toggle **Wireframe**: the 256-grid is visible over the surface.
-- Toggle **Elevation view**: RGB drops away, the height ramp remains.
-- Switch to **Flythrough** and fly across the terrain with `W A S D`.
-
-**3:45 — Honesty slide (this wins marks).** Point at the amber banner:
-**"Relative Height — Not Metric."** Say it plainly:
-"Monocular depth is scale- and shift-ambiguous. The *ordering* of heights is
-meaningful; the absolute values are not. We refuse to print metres we cannot
-justify."
-
-**4:15 — The roadmap.** Open `docs/pipeline.md` §Extension seams, or the README
-stage table. Stage 2 GAMUS semantic refinement → Stage 3 SRTM/GCP calibration →
-absolute metric DSM → Stage 4 GeoTIFF → Stage 5 RMSE/MAE validation. The
-orchestrator already carries the `# [stage-N]` insertion points.
-
-**4:45 — The artefacts.** Download the `.npy` height array and open
-`metadata.json` from the statistics panel: `georeferenced: false`,
-`height_units: "relative"`, `type: "relative monocular depth"`. Every output is
-self-describing.
-
-## Likely questions
-
-**"Is this really AI, or a filter?"** Open `/docs` (FastAPI Swagger), run
-`POST /api/process` there, show the raw JSON. Or show the backend log line with
-the model name and CUDA device. Upload a photo the judges pick themselves.
-
-**"Why not metres?"** Relative depth from a single image has no absolute scale —
-a model plane at 1 m and a real one at 100 m project identically. Metres require
-an external reference: GCPs, a DEM, or known camera geometry. That is Stage 3.
-
-**"How accurate is it?"** Not quantified yet, and deliberately so — RMSE/MAE
-needs reference LiDAR or an existing DSM, which is Stage 5. What Stage 1
-guarantees is a correct, reproducible *relative* surface.
-
-**"Why Depth Anything V2 Small?"** Strong zero-shot generalisation across
-domains, and small enough to run interactively on a laptop GPU — which matters
-for a live demo. The estimator module is a single swap-in point for a larger
-variant or a GAMUS-fine-tuned model.
-
-**"What about overhangs / building facades?"** A height field is 2.5D by
-construction — one height per ground cell. True 3D would need multi-view or
-volumetric reconstruction, which is outside PS 26175's single-view framing.
+## If something goes wrong
+- Backend window shows an error: close both windows, run `start_demo.ps1` again.
+- A GeoTIFF outside the cached areas without internet: the app still works but returns a georeferenced
+  **nDSM** (no DEM) and says so.
+- Reload a finished result: `http://127.0.0.1:5173/?job=<id>`.
