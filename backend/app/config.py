@@ -58,7 +58,10 @@ class Settings:
     MAX_TEXTURE_SIDE = int(_env("DW_MAX_TEXTURE_SIDE", "2048"))
 
     # --- Terrain ---------------------------------------------------------
-    TERRAIN_RESOLUTION = int(_env("DW_TERRAIN_RESOLUTION", "512"))
+    # Mesh grid cells on the longest side (area-averaged). Measured on a laptop integrated GPU
+    # (Radeon 780M, 1920x1080): 512 -> 144 fps, 0.9 s to open the Explorer; 768 -> 143 fps, 2.1 s;
+    # 1024 -> 2.5-68 fps, 5-6 s. 768 keeps 2.25x the detail of 512 and stays smooth.
+    TERRAIN_RESOLUTION = int(_env("DW_TERRAIN_RESOLUTION", "768"))
 
     # --- CORS ------------------------------------------------------------
     CORS_ORIGINS = _env(

@@ -65,7 +65,7 @@ def post(client, data, name="scene.png", ctype="image/png", **form):
 def test_health(client):
     body = client.get("/api/health").json()
     assert body["status"] == "ok" and body["model_checkpoint"] == "stub-run"
-    assert body["terrain_resolution"] == 512
+    assert body["terrain_resolution"] == 768
 
 
 def test_root_advertises_metric_ndsm(client):
@@ -122,7 +122,7 @@ def test_terrain_is_in_metres_with_true_footprint(client, png_bytes):
 def test_large_image_is_gridded_but_array_is_full_resolution(client):
     body = post(client, make_image_bytes(2400, 1600), name="big.png").json()
     t = body["terrain"]
-    assert (t["width"], t["height"]) == (512, 341) and t["aspect_ratio"] == pytest.approx(1.5)
+    assert (t["width"], t["height"]) == (768, 512) and t["aspect_ratio"] == pytest.approx(1.5)
     arr = np.load(io.BytesIO(client.get(f"/api/results/{body['job_id']}/height-array").content))
     assert arr.shape == (1600, 2400) and arr.dtype == np.float32   # native resolution, never downscaled
     assert (body["height_product"]["width"], body["height_product"]["height"]) == (2400, 1600)

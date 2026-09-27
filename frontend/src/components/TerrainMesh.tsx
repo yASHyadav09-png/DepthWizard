@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useTexture } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { TerrainGrid, ViewMode } from '../types'
 import { decodeHeights } from '../services/terrain'
 import { sceneBase } from '../services/geo'
+import { applyWallShading, updateWallAttribute } from './wallShading'
+import { acceleratedRaycast, buildBvh, refitBvh } from './fastRaycast'
 
 /** Elevation ramp used for the "elevation" view mode and its legend (low -> high). */
 export const RAMP: [number, [number, number, number]][] = [
@@ -109,6 +112,8 @@ function buildGeometry(grid: TerrainGrid): BuiltGeometry {
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
   geometry.setIndex(new THREE.BufferAttribute(indices, 1))
   geometry.computeVertexNormals()
+  updateWallAttribute(geometry)
+  buildBvh(geometry)
 
   return { geometry, baseHeights: shifted, base }
 }
@@ -129,6 +134,7 @@ export function TerrainMesh({
   onHover?: (info: HoverInfo | null) => void
 }) {
   const texture = useTexture(textureUrl)
+  const maxAnisotropy = useThree((s) => s.gl.capabilities.getMaxAnisotropy())
   const meshRef = useRef<THREE.Mesh>(null)
 
   const { geometry, baseHeights, base } = useMemo(() => buildGeometry(grid), [grid])
@@ -138,9 +144,9 @@ export function TerrainMesh({
 
   useEffect(() => {
     texture.colorSpace = THREE.SRGBColorSpace
-    texture.anisotropy = 8
+    texture.anisotropy = maxAnisotropy // sharper texture at grazing angles (zoomed out)
     texture.needsUpdate = true
-  }, [texture])
+  }, [texture, maxAnisotropy])
 
   // Re-displace instead of scaling the mesh: scaling would leave the normals
   // (and therefore the shading) wrong at high exaggeration.
@@ -152,6 +158,8 @@ export function TerrainMesh({
     }
     position.needsUpdate = true
     geometry.computeVertexNormals()
+    updateWallAttribute(geometry) // steepness changes with the exaggeration
+    refitBvh(geometry) // keep hover picking in sync with the displaced surface
     geometry.computeBoundingSphere()
   }, [geometry, baseHeights, exaggeration])
 
@@ -179,6 +187,7 @@ export function TerrainMesh({
       <mesh
         ref={meshRef}
         geometry={geometry}
+        raycast={acceleratedRaycast}
         castShadow
         receiveShadow
         onPointerMove={handleMove}
@@ -188,6 +197,9 @@ export function TerrainMesh({
             `vertexColors`/`map` change on an existing material */}
         <meshStandardMaterial
           key={viewMode}
+          ref={(m: THREE.MeshStandardMaterial | null) => {
+            if (m && textured) applyWallShading(m) // walls: local average colour, no streaks
+          }}
           map={textured ? texture : null}
           vertexColors={!textured}
           roughness={textured ? 0.82 : 0.7}

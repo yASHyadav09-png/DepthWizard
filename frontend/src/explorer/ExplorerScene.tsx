@@ -11,6 +11,8 @@ import { aboveGroundAt, buildTerrainGeometry, cellValueAt, colourAttribute, heig
 import { constrainMove, settle } from './physics'
 import type { MoveMode } from './physics'
 import { errorColor, rampColor, slopeColor } from './ramp'
+import { applyWallShading, updateWallAttribute } from '../components/wallShading'
+import { acceleratedRaycast, buildBvh } from '../components/fastRaycast'
 import type { GroundPoint } from './measure'
 import { sampleProfile } from './measure'
 
@@ -108,7 +110,13 @@ function Terrain({
   errorLimit: number
 }) {
   const texture = useTexture(textureUrl)
-  const geometry = useMemo(() => buildTerrainGeometry(terrain), [terrain])
+  const maxAnisotropy = useThree((s) => s.gl.capabilities.getMaxAnisotropy())
+  const geometry = useMemo(() => {
+    const g = buildTerrainGeometry(terrain)
+    updateWallAttribute(g)
+    buildBvh(g) // fast picking for hover readouts, tool clicks and the fly/walk target ray
+    return g
+  }, [terrain])
   useEffect(() => {
     geometry.setAttribute(
       'color',
@@ -124,15 +132,16 @@ function Terrain({
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => {
     texture.colorSpace = THREE.SRGBColorSpace
-    texture.anisotropy = 8
+    texture.anisotropy = maxAnisotropy
     texture.needsUpdate = true
-  }, [texture])
+  }, [texture, maxAnisotropy])
 
   const textured = layer === 'rgb'
   return (
     <mesh
       ref={meshRef}
       geometry={geometry}
+      raycast={acceleratedRaycast}
       receiveShadow
       onPointerMove={(e) => {
         if (telemetry.pointerLocked) return // fly/walk use the screen-centre ray instead
@@ -159,6 +168,9 @@ function Terrain({
       {/* keyed: three.js does not recompile a material when map/vertexColors change */}
       <meshStandardMaterial
         key={layer}
+        ref={(m: THREE.MeshStandardMaterial | null) => {
+          if (m && textured) applyWallShading(m)
+        }}
         map={textured ? texture : null}
         vertexColors={!textured}
         roughness={0.85}

@@ -37,7 +37,7 @@ unitless relative-depth prototype; the current system outputs metres.)
 
 ## 5. Products for the viewer (`app/services/height_processor.py`, `terrain_generator.py`)
 - Statistics (median, p95, share above 2 m, ...), colour height map, hillshade at true scale.
-- Terrain grid: the surface (nDSM, or DSM for GeoTIFFs) area-averaged to at most 512 px per side,
+- Terrain grid: the surface (nDSM, or DSM for GeoTIFFs) area-averaged to at most 768 px per side (performance-tested on an integrated GPU),
   float32 base64; for DSM jobs also the nDSM on the same grid (`ndsm_b64`).
 - `height_product` contract: kind (ndsm/dsm), units, GSD + source, validity, CRS/transform/bounds/
   corners (lon/lat), vertical datum, DEM and GCP details, GeoTIFF links, model provenance.

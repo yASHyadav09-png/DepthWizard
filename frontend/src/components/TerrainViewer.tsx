@@ -119,6 +119,7 @@ export function TerrainViewer({
   exaggeration,
   navMode,
   resetSignal,
+  paused = false,
 }: {
   result: ProcessResult | null
   viewMode: ViewMode
@@ -126,6 +127,8 @@ export function TerrainViewer({
   exaggeration: number
   navMode: NavMode
   resetSignal: number
+  /** Stop rendering (e.g. while the full-screen Explorer covers the dashboard). */
+  paused?: boolean
 }) {
   const [hover, setHover] = useState<HoverInfo | null>(null)
   if (!result) return <EmptyState />
@@ -141,6 +144,7 @@ export function TerrainViewer({
       <Canvas
         key={result.job_id}
         shadows
+        frameloop={paused ? 'never' : 'always'}
         // `flat` = no ACES tone mapping: the projected RGB texture should read
         // as the photograph, not as a filmic grade of it.
         flat

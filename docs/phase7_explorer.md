@@ -86,6 +86,12 @@ validation, the validation report JSON and error map. GeoTIFF export: Phase 5.
 
 ## Known limitations
 - Mouse-look (pointer lock) can't be exercised by the automated browser; it needs a manual check.
-- The Explorer uses the 512-cell mesh grid (≈ 0.66 m cells for a 1024 tile). Readouts and slope are
-  at that resolution; the full-resolution nDSM is in the `.npy` export.
+- The Explorer uses the mesh grid: 768 cells per side since v1.0.0 (0.44 m cells for a GAMUS tile; was 512,
+  0.66 m). 1024 (full tile resolution) was tried and rejected: on a laptop integrated GPU (Radeon 780M) the
+  dashboard dropped to 2.5-68 fps and opening the Explorer took 5-6 s, vs 143 fps / 2.1 s at 768
+  (`DW_TERRAIN_RESOLUTION` overrides). Picking uses a BVH (`components/fastRaycast.ts`); the dashboard
+  canvas pauses while the Explorer is open. The full-resolution nDSM is in the `.npy` export.
+- Walls: a top-down image has no pixels for vertical faces, so steep faces (> ~40-66 deg) are coloured with
+  the local average image colour (coarse mipmap), not stretched roof-edge pixels (`components/wallShading.ts`).
+  Colour only; heights are unchanged. Texture anisotropy = the GPU maximum.
 - Minimap click-to-teleport is postponed.

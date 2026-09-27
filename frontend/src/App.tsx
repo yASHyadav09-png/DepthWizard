@@ -238,6 +238,7 @@ export default function App() {
                     exaggeration={exaggeration}
                     navMode={navMode}
                     resetSignal={resetSignal}
+                    paused={explorerOpen}
                   />
                 </ErrorBoundary>
               </div>

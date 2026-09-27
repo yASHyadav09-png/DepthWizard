@@ -34,7 +34,7 @@ The old `backend/.venv` is no longer used. Everything runs from the project `.ve
    - Larger: 1024 px windows with 128 px overlap, blended with linear feathering.
    - Deterministic numerics (cuDNN deterministic, TF32 off), as in evaluation.
 3. Statistics in metres; 2D products (height map and hillshade at true vertical scale); a
-   512-cell mesh grid in metres.
+   mesh grid in metres (512 cells at Phase 3; 768 since v1.0.0).
 4. The response carries the **height product** (the hand-off contract below) and the
    provenance: run, checkpoint sha256, git commit, val RMSE.
 
