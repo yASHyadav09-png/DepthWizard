@@ -1,0 +1,48 @@
+name: phase6_scaleaug
+seed: 0
+phase1_commit: ef540d07840ab8f011f182b6ea6e5187b08ea480   # Phase 1 baselines
+phase2b_run: runs/20260926-003630_phase2b_partial          # the production model this is compared with
+subset: full                 # same 5,004 train + 859 val as 2a/2b (no test)
+model:
+  id: depth-anything/Depth-Anything-V2-Small-hf
+  revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
+trainable:
+  mode: partial              # same as 2b: DPT neck + head + last 4 of 12 DINOv2-S blocks
+  unfreeze_last_blocks: 4
+# Continue from the selected 2b checkpoint (its fixed s0 = 3.659840 is reused). 2b itself is not modified.
+init_from: runs/20260926-003630_phase2b_partial/checkpoints/best.pt
+init_scale:                  # not used when init_from is set
+  n_tiles: 50
+  seed: 0
+data:
+  crop: 518
+  workers: 6
+  jitter: {brightness: 0.1, contrast: 0.1, saturation: 0.1, hue: 0.02}
+  # Phase 6: with p = 0.5 a crop shows the scene at 0.33 * s m/px, s ~ U(1.0, 1.95) -> 0.33-0.64 m/px
+  # (a round(518 * s) px window coarsened to 518 px; depthwizard.data.coarsen = the Phase 4 simulation).
+  # 1.95 is the largest factor whose window (1010 px) fits in a 1024 px tile; it covers NAIP's 0.6 m.
+  scale_aug: {p: 0.5, min: 1.0, max: 1.95}
+loss:
+  lambda_grad: 0.5
+  grad_scales: 4
+optim:
+  lr: 2.5e-5                 # decoder: half of 2b (continuing from a converged model)
+  encoder_lr: 2.5e-6         # unfrozen encoder blocks: half of 2b
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  warmup_steps: 300
+  schedule: cosine
+  grad_clip: 1.0
+batch:
+  size: 8
+  accum: 1
+  fallbacks: [[4, 2], [2, 4]]
+epochs: 10
+amp: bf16
+eval:
+  every_epochs: 2            # epochs 2, 4, 6, 8, 10
+  amp: bf16
+  workers: 4
+  # checkpoint selection: lowest mean of val RMSE at 0.33 m (native) and 0.66 m (simulated, Phase 4 protocol)
+  gsds: [0.33, 0.66]
+log_every: 50

@@ -1,0 +1,35 @@
+{
+  "optimizer_steps": 200,
+  "wall_s": 204.64819049998187,
+  "batch": 8,
+  "accum": 1,
+  "samples_per_s_steady": 8.718107798130614,
+  "steps_per_s_steady": 1.0897634747663267,
+  "data_wait_frac_steady": 0.0009451429516439224,
+  "peak_vram_torch_mb": 3424.74462890625,
+  "peak_vram_reserved_mb": 4910.0,
+  "gpu_util_mean_pct": 83.81151832460733,
+  "gpu_util_median_pct": 94.0,
+  "nvidia_smi_mem_max_mb": 5620.0,
+  "samples": 191,
+  "val_sec_per_tile": 0.266728982499626,
+  "loss_first_interval": {
+    "l1": 1.7016110229492187,
+    "grad": 0.9864813995361328,
+    "grad_weighted": 0.4932406997680664,
+    "total": 2.19485107421875,
+    "grad_to_l1_ratio": 0.2898668926774966
+  },
+  "loss_last_interval": {
+    "l1": 1.7633123779296875,
+    "grad": 1.0488380432128905,
+    "grad_weighted": 0.5244190216064453,
+    "total": 2.2877317810058595,
+    "grad_to_l1_ratio": 0.2974056260083468
+  },
+  "estimate_full_run_h": {
+    "train": 1.5943826713155023,
+    "eval": 0.31822249439885936,
+    "total": 1.9126051657143617
+  }
+}

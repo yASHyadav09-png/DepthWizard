@@ -9,6 +9,11 @@ For an AOI (lon/lat centre + half-size in metres) writes to data/geo/<name>/:
     manifest.json     item ids, dates, CRSs, resolutions, source URLs (without SAS tokens)
 
 Usage:  python scripts/fetch_geo_aoi.py --name pittsburgh --lon -79.985 --lat 40.425 --half 650 --naip-year 2019
+        python scripts/fetch_geo_aoi.py --name carmel_suburb ... --naip-year 2016 --lidar-project USGS_LPC_IN_Central_Hamilton_2017_LAS_2019
+
+Phase 6: NAIP and LiDAR tiles are MOSAICKED when the AOI spans several (all NAIP items of the
+requested year in one CRS; all LiDAR items of one project), and the valid-data coverage of each
+layer inside the AOI is recorded in the manifest (`coverage`).
 """
 from __future__ import annotations
 
@@ -54,6 +59,45 @@ def clip(href: str, bounds_ll, out: Path, bands=None) -> dict:
                 "source": href.split("?")[0]}
 
 
+def clip_mosaic(hrefs: list[str], bounds_ll, out: Path, bands=None) -> dict:
+    """Like clip() but mosaics several COGs that share one CRS (first valid pixel wins)."""
+    if len(hrefs) == 1:
+        return clip(hrefs[0], bounds_ll, out, bands)
+    from rasterio.merge import merge
+    srcs = [rasterio.open(h) for h in hrefs]
+    try:
+        crs = srcs[0].crs
+        assert all(x.crs == crs for x in srcs), "items are in different CRSs"
+        b = transform_bounds("EPSG:4326", crs, *bounds_ll, densify_pts=21)
+        idx = bands or list(range(1, srcs[0].count + 1))
+        data, tr = merge(srcs, bounds=b, indexes=idx, res=srcs[0].res, nodata=srcs[0].nodata)
+        prof = srcs[0].profile.copy()
+        prof.update(driver="GTiff", width=data.shape[2], height=data.shape[1], count=len(idx), transform=tr,
+                    compress="deflate", tiled=True, blockxsize=256, blockysize=256)
+        prof.pop("photometric", None)
+        with rasterio.open(out, "w", **prof) as dst:
+            dst.write(data)
+            dst.update_tags(**{k: v for k, v in srcs[0].tags().items() if len(str(v)) < 2000})
+        return {"file": out.name, "crs": crs.to_string(), "res": list(srcs[0].res), "shape": list(data.shape),
+                "dtype": str(data.dtype), "nodata": srcs[0].nodata, "units": srcs[0].units or None,
+                "source": [h.split("?")[0] for h in hrefs]}
+    finally:
+        for x in srcs:
+            x.close()
+
+
+def raster_intersects(href: str, bounds_ll) -> bool:
+    """STAC footprints can be coarse: check the raster itself overlaps the AOI."""
+    with rasterio.open(href) as src:
+        b = transform_bounds("EPSG:4326", src.crs, *bounds_ll, densify_pts=21)
+        return b[0] < src.bounds.right and b[2] > src.bounds.left and b[1] < src.bounds.top and b[3] > src.bounds.bottom
+
+
+def coverage(path: Path) -> float:
+    with rasterio.open(path) as src:
+        return float((src.dataset_mask() > 0).mean())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
@@ -62,6 +106,7 @@ def main():
     ap.add_argument("--half", type=float, default=650, help="AOI half-size in metres")
     ap.add_argument("--dem-margin", type=float, default=3000, help="extra DEM margin (m) for the ground filter")
     ap.add_argument("--naip-year", type=str)
+    ap.add_argument("--lidar-project", type=str, help="3DEP project id prefix (default: first item found)")
     a = ap.parse_args()
 
     out = ROOT / "data" / "geo" / a.name
@@ -77,17 +122,30 @@ def main():
     if not naip:
         sys.exit("no NAIP item")
     it = naip[-1]
-    man["naip"] = {"item": it.id, "datetime": it.properties.get("datetime"), "gsd": it.properties.get("gsd"),
-                   **clip(it.assets["image"].href, bb, out / "naip_rgb.tif", bands=[1, 2, 3])}
+    # all items of that year in the same CRS (quarter-quads can split the AOI)
+    same = [i for i in naip if i.properties.get("naip:year") == it.properties.get("naip:year")
+            and i.properties.get("proj:epsg") == it.properties.get("proj:epsg")]
+    man["naip"] = {"item": it.id if len(same) == 1 else [i.id for i in same], "datetime": it.properties.get("datetime"),
+                   "gsd": it.properties.get("gsd"),
+                   **clip_mosaic([i.assets["image"].href for i in same], bb, out / "naip_rgb.tif", bands=[1, 2, 3])}
     print("NAIP", man["naip"]["item"], man["naip"]["crs"], man["naip"]["res"], man["naip"]["shape"])
 
     for kind in ("dsm", "dtm"):
         items = list(cat.search(collections=[f"3dep-lidar-{kind}"], bbox=bb).items())
+        if a.lidar_project:
+            items = [i for i in items if i.id.rsplit(f"-{kind}-", 1)[0] == a.lidar_project
+                     and raster_intersects(i.assets["data"].href, bb)]
         if not items:
             sys.exit(f"no 3DEP {kind}")
         it = items[0]
-        man[f"lidar_{kind}"] = {"item": it.id, "datetime": it.properties.get("start_datetime") or it.properties.get("datetime"),
-                                **clip(it.assets["data"].href, bb, out / f"lidar_{kind}.tif")}
+        if a.lidar_project:
+            hrefs = [i.assets["data"].href for i in items]
+            man[f"lidar_{kind}"] = {"item": [i.id for i in items], "project": a.lidar_project,
+                                    "datetime": it.properties.get("start_datetime") or it.properties.get("datetime"),
+                                    **clip_mosaic(hrefs, bb, out / f"lidar_{kind}.tif")}
+        else:
+            man[f"lidar_{kind}"] = {"item": it.id, "datetime": it.properties.get("start_datetime") or it.properties.get("datetime"),
+                                    **clip(it.assets["data"].href, bb, out / f"lidar_{kind}.tif")}
         print(kind.upper(), it.id, man[f"lidar_{kind}"]["crs"][:60], man[f"lidar_{kind}"]["res"])
 
     # GLO-30 comes in 1x1 degree tiles; the AOI + margin can span several -> mosaic them
@@ -110,6 +168,9 @@ def main():
             s.close()
     print("GLO-30", man["glo30"]["items"], man["glo30"]["crs"], man["glo30"]["res"], man["glo30"]["shape"],
           "nodata px", man["glo30"]["nodata_px"])
+    man["coverage"] = {k: coverage(out / f) for k, f in (("naip", "naip_rgb.tif"), ("lidar_dsm", "lidar_dsm.tif"),
+                                                          ("lidar_dtm", "lidar_dtm.tif"))}
+    print("coverage", man["coverage"])
     (out / "manifest.json").write_text(json.dumps(man, indent=2))
     print("wrote", out)
 

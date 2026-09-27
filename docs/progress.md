@@ -7,8 +7,8 @@
 | 2 Supervised RGB → nDSM (frozen encoder, then partial fine-tune) | **done** 2026-09-26: 2b kept (pre-registered rule) | beats B1 on val; one test run |
 | 3 Thin end-to-end demo (predict.py + FastAPI + minimal R3F viewer) | **done** 2026-09-26 | web path = evaluated model (Δ 1e-13 m); large images tiled; 3D in metres |
 | 4 Resolution/GSD handling | **closed** 2026-09-26 (study done; GCP -> Phase 5, scale-aug fine-tune -> Phase 6) | GSD study in results.csv |
-| 5 Absolute DSM (DEM, CRS, vertical datum) + GCP correction | **done** 2026-09-27 (ground-filter default: decision open) | valid GeoTIFF out (tested with rasterio; manual QGIS check pending) |
-| 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) + scale-aug fine-tune test on real ~0.6 m NAIP | | per-landscape metrics |
+| 5 Absolute DSM (DEM, CRS, vertical datum) + GCP correction | **done** 2026-09-27 (ground filter: 150 m kept, user 2026-09-27) | valid GeoTIFF out (tested with rasterio; manual QGIS check pending) |
+| 6 Out-of-domain validation (3DEP LiDAR + NAIP: urban/sparse/hilly/forest) + scale-aug fine-tune test on real ~0.6 m NAIP | **6a done** 2026-09-27; 6b ready (awaits commit) | per-landscape metrics |
 | 7 Viewer features (fly mode, probe, profile, slope, validation panel) | **7a-7e done** 2026-09-26 | see docs/phase7_explorer.md |
 | 8 Polish, docs, packaging | | |
 
@@ -67,6 +67,13 @@ Pittsburgh (NAIP 0.6 m vs 3DEP LiDAR, run `runs/20260926-161419_phase5_pittsburg
 (raw GLO-30 DSM 4.76), DTM 4.45 (raw GLO-30 3.27), model nDSM 3.05 (bias -2.0 m on objects).
 The 150 m filter hurts on steep terrain; the default is left unchanged pending a decision
 (choosing it from Pittsburgh would tune on the evaluation area). GCP offset helps slightly; plane over-fits.
+
+## Phase 6 summary (in progress)
+Plan + pre-registered rule: `docs/phase6_plan.md`; results: `docs/phase6_results.md`.
+6a (2b on real NAIP 0.6 m vs 3DEP LiDAR, 5 valid areas): pooled nDSM RMSE 2.17 / MAE 1.10 / r 0.70;
+tall objects strongly underestimated (10-20 m: bias -6.0 m). Indianapolis excluded (its LiDAR DTM contains
+buildings). The 150 m ground filter beats raw GLO-30 in 4 of 5 areas (loses only on steep Pittsburgh).
+6b (scale-augmentation fine-tune, 0.33-0.64 m/px): config + speed gate done; training needs a commit first.
 
 ## Phase 7 summary
 See `docs/phase7_explorer.md`. Full-screen 3D Explorer in real metres: Orbit/Fly/Walk with terrain-constrained

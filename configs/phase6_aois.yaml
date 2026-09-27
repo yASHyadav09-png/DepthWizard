@@ -1,0 +1,83 @@
+# Phase 6 out-of-domain evaluation areas (fixed 2026-09-27 BEFORE any Phase 6 data fetch or model run).
+#
+# Selection rules (a priori, no model output involved):
+#   * one AOI per landscape type; 1.3 x 1.3 km (half = 650 m), like Phase 5
+#   * USGS 3DEP LiDAR DSM + DTM (2 m) available on Microsoft Planetary Computer, acquired 2016 or later;
+#     acquisition year = the year in the project name (the STAC start_datetime is a placeholder)
+#   * NAIP 0.6 m imagery: the year closest to the LiDAR year (ties -> the earlier year)
+#   * exclusion rule: an AOI is dropped (and reported as dropped) if LiDAR DSM or DTM coverage inside
+#     the AOI is < 90%, or NAIP coverage < 99%. Dropped AOIs are NOT replaced after seeing any results.
+# The AOIs are used for evaluation only: never for training, checkpoint selection or thresholds.
+# Pittsburgh was already evaluated with the Phase 2b model in Phase 5; it is kept as the hilly AOI.
+half_m: 650
+aois:
+  - name: pittsburgh
+    landscape: hilly urban, wooded slopes
+    lon: -79.985
+    lat: 40.425
+    lidar_project: PA_WesternPA_2_2019
+    lidar_year: 2019
+    naip_year: "2019"
+  - name: indianapolis_core
+    # AMENDMENT 2026-09-27 (after the Phase 2b evaluation, before any Phase 6b model existed): the LiDAR
+    # "DTM" of this project contains most buildings (DTM up to 40 m above street level; see
+    # docs/phase6_results.md), so DSM - DTM is not a valid nDSM reference and the DTM is not bare earth.
+    # Excluded from pooled nDSM / DTM metrics and from the R3 blocks; the DSM comparison stays valid.
+    reference_exclude: [ndsm, dtm]
+    reference_exclude_reason: "LiDAR DTM contains buildings (not bare earth)"
+    landscape: dense urban, mid/high-rise downtown
+    lon: -86.158
+    lat: 39.768
+    lidar_project: USGS_LPC_IN_Central_MarionCo_2016_LAS_2018
+    lidar_year: 2016
+    naip_year: "2016"
+  - name: carmel_suburb
+    landscape: suburban residential
+    lon: -86.130
+    lat: 39.970
+    lidar_project: USGS_LPC_IN_Central_Hamilton_2017_LAS_2019
+    lidar_year: 2017
+    naip_year: "2016"            # 2016 and 2018 tie -> earlier
+  - name: tucson_urban
+    dropped: "LiDAR DSM/DTM coverage 0% inside the AOI (FEMA floodplain project with gaps)"
+    landscape: arid low-rise urban
+    lon: -110.950
+    lat: 32.230
+    lidar_project: USGS_LPC_AZ_BrawleyRillito_FEMA_2018
+    lidar_year: 2018
+    naip_year: "2017"            # 2017 and 2019 tie -> earlier
+  - name: champaign_farm
+    landscape: flat farmland with farmsteads
+    lon: -88.350
+    lat: 40.050
+    lidar_project: IL_8County_PlusChampaign_B1_2019
+    lidar_year: 2019
+    naip_year: "2019"
+  - name: mendocino_forest
+    dropped: "no DTM tile of the project overlaps the AOI"
+    landscape: steep coastal forest (conifer)
+    lon: -123.600
+    lat: 39.300
+    lidar_project: USGS_LPC_CA_FEMA_R9_Mendocino_HF_2017_LAS_2018
+    lidar_year: 2017
+    naip_year: "2016"            # 2016 and 2018 tie -> earlier
+
+# AMENDMENT 2026-09-27 (after the fetch, BEFORE any model was run on any Phase 6 AOI): tucson_urban and
+# mendocino_forest failed the coverage rule. Replacements for the two missing landscapes, chosen only by
+# data availability (LiDAR DSM + DTM rasters overlapping the AOI, 0.6 m NAIP), same rules as above.
+# Candidates checked and rejected for missing DSM/DTM: El Centro, Indio, Alpine TX (arid);
+# Kentucky, north-central PA, Rogue River OR (forest).
+  - name: del_rio_arid
+    landscape: arid small town, low-rise
+    lon: -100.896
+    lat: 29.370
+    lidar_project: TX_WestTexas_B2_2018
+    lidar_year: 2018
+    naip_year: "2018"
+  - name: grayling_forest
+    landscape: forest (pine/mixed) with small town edge
+    lon: -84.700
+    lat: 44.650
+    lidar_project: MI_FEMA_Crawford_Kalkaska_2019
+    lidar_year: 2019
+    naip_year: "2018"            # 2018 and 2020 tie -> earlier

@@ -1,0 +1,12 @@
+{
+  "name": "phase6_aois_phase2b",
+  "started": "2026-09-27T13:12:09",
+  "seed": null,
+  "git": {
+    "commit": "10a1271e37f5d44aa12a56122fdc84581f5c53ec",
+    "dirty": true
+  },
+  "python": "3.11.0",
+  "torch": "2.11.0+cu128",
+  "cuda_device": "NVIDIA GeForce RTX 5050 Laptop GPU"
+}

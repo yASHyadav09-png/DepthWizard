@@ -168,14 +168,24 @@ try:
         90° rotations (height is invariant to in-plane rotation for nadir imagery)
         + optional colour jitter (dict of color_jitter kwargs).
         train=False: full tile (or centre crop if `crop` is set), no augmentation.
+
+        scale_aug (Phase 6, train only), e.g. {"p": 0.5, "min": 1.0, "max": 1.95}: with
+        probability p draw s ~ U(min, max), read a round(crop * s) px window and coarsen it
+        to `crop` px (RGB area average, nDSM valid-weighted area average with >= 50% valid,
+        classes nearest; depthwizard.data.coarsen = the Phase 4 simulation). The sample then
+        shows the scene at a ground resolution of 0.33 * s m/px with the same tensor size.
+        `scale` in the returned dict is the factor used (1.0 = native).
         """
 
         def __init__(self, subset: str, split: str, crop: int | None = None,
                      train: bool = False, root: Path = DATA_DIR, jitter: dict | None = None,
-                     tile_size: int = 1024):
+                     tile_size: int = 1024, scale_aug: dict | None = None):
             self.ids = load_subset(subset)[split]
             self.split, self.crop, self.train, self.root = split, crop, train, root
             self.jitter, self.tile_size = jitter, tile_size
+            self.scale_aug = scale_aug if train else None
+            if self.scale_aug:
+                assert crop and round(crop * self.scale_aug["max"]) <= tile_size, 'scale_aug window exceeds the tile'
 
         def __len__(self) -> int:
             return len(self.ids)
@@ -183,8 +193,13 @@ try:
         def __getitem__(self, i: int) -> dict:
             tid = self.ids[i]
             window = None
+            scale = 1.0
+            if self.scale_aug and np.random.rand() < self.scale_aug["p"]:
+                scale = float(np.random.uniform(self.scale_aug["min"], self.scale_aug["max"]))
             if self.crop:
                 c, S = self.crop, self.tile_size
+                c_out = c
+                c = int(round(c * scale))            # native window that becomes `crop` px after coarsening
                 if self.train:
                     y, x = np.random.randint(0, S - c + 1), np.random.randint(0, S - c + 1)
                 else:
@@ -192,6 +207,11 @@ try:
                 window = (y, x, c)
             t = read_tile(self.split, tid, self.root, window=window)
             rgb, ndsm, cls, valid = t["rgb"], t["ndsm"], t["cls"], t["valid"]
+            if self.crop and c != c_out:
+                from .coarsen import coarsen_cls, coarsen_gt, coarsen_rgb
+                rgb = coarsen_rgb(rgb, c_out)
+                ndsm, valid = coarsen_gt(ndsm, valid, c_out)
+                cls = coarsen_cls(cls, c_out)
 
             if self.train:
                 k = np.random.randint(4)
@@ -212,6 +232,7 @@ try:
                 "valid": torch.from_numpy(np.ascontiguousarray(valid))[None],
                 "cls": torch.from_numpy(np.ascontiguousarray(cls)).long(),
                 "id": tid,
+                "scale": scale,
             }
 except ImportError:  # torch-free use (inspection scripts)
     pass

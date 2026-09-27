@@ -1,0 +1,49 @@
+model_run: 20260926-003630_phase2b_partial
+aois:
+- name: pittsburgh
+  landscape: hilly urban, wooded slopes
+  lon: -79.985
+  lat: 40.425
+  lidar_project: PA_WesternPA_2_2019
+  lidar_year: 2019
+  naip_year: '2019'
+- name: indianapolis_core
+  landscape: dense urban, mid/high-rise downtown
+  lon: -86.158
+  lat: 39.768
+  lidar_project: USGS_LPC_IN_Central_MarionCo_2016_LAS_2018
+  lidar_year: 2016
+  naip_year: '2016'
+- name: carmel_suburb
+  landscape: suburban residential
+  lon: -86.13
+  lat: 39.97
+  lidar_project: USGS_LPC_IN_Central_Hamilton_2017_LAS_2019
+  lidar_year: 2017
+  naip_year: '2016'
+- name: champaign_farm
+  landscape: flat farmland with farmsteads
+  lon: -88.35
+  lat: 40.05
+  lidar_project: IL_8County_PlusChampaign_B1_2019
+  lidar_year: 2019
+  naip_year: '2019'
+- name: del_rio_arid
+  landscape: arid small town, low-rise
+  lon: -100.896
+  lat: 29.37
+  lidar_project: TX_WestTexas_B2_2018
+  lidar_year: 2018
+  naip_year: '2018'
+- name: grayling_forest
+  landscape: forest (pine/mixed) with small town edge
+  lon: -84.7
+  lat: 44.65
+  lidar_project: MI_FEMA_Crawford_Kalkaska_2019
+  lidar_year: 2019
+  naip_year: '2018'
+aoi_config: configs/phase6_aois.yaml
+ground_filter_window_m: 150.0
+block_px_2m: 64
+comparison_grid: LiDAR 2 m grid, our products area-averaged
+reference_ndsm: LiDAR DSM - LiDAR DTM

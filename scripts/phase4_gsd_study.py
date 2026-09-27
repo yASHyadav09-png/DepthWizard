@@ -14,6 +14,7 @@ Both are scored on the g grid against GT_g with the same metrics and breakdowns 
 Phases 1-2. At g = 0.33, A = B = the Phase 2b val evaluation (sanity check).
 
 Usage:  python scripts/phase4_gsd_study.py
+        python scripts/phase4_gsd_study.py --run runs/<phase6 run> --name phase6_gsd_scaleaug --gsds 0.33 0.50 0.66 1.00
 """
 from __future__ import annotations
 
@@ -83,17 +84,19 @@ def main():
     ap.add_argument("--gsds", type=float, nargs="+", default=[0.33, 0.50, 0.66, 1.00, 2.00])
     ap.add_argument("--limit", type=int, help="first N val tiles only (smoke test)")
     ap.add_argument("--smoke", action="store_true", help="no results.csv rows")
+    ap.add_argument("--run", type=Path, default=DEFAULT_RUN, help="model run (Phase 6: compare other models)")
+    ap.add_argument("--name", default="phase4_gsd_study")
     a = ap.parse_args()
 
     ids = load_subset("full")["val"][: a.limit]
-    cfg = {"name": "phase4_gsd_study", "split": "val", "model_run": DEFAULT_RUN.name, "gsds": a.gsds,
+    cfg = {"name": a.name, "split": "val", "model_run": a.run.name, "gsds": a.gsds,
            "base_gsd": GAMUS_GSD_M, "tile": TILE, "n_tiles": len(ids),
            "rgb_downsample": "PIL BOX (area average)", "gt_downsample": "area average of valid pixels, valid if >=50%",
            "cls_downsample": "nearest", "strategy_B_upsample": "PIL BICUBIC to 1024 px",
            "strategy_B_back_to_grid": "area average (BOX)"}
     run = new_run(cfg["name"] + ("_smoke" if a.smoke else ""), cfg)
     write_manifest(run, {"val": ids})
-    pred = NDSMPredictor(DEFAULT_RUN)
+    pred = NDSMPredictor(a.run)
     sizes = {g: int(round(TILE * GAMUS_GSD_M / g)) for g in a.gsds}
     print("grid sizes:", sizes)
     evs = {(g, s): SplitEvaluator() for g in a.gsds for s in "AB"}
@@ -125,7 +128,7 @@ def main():
                      "r": o["pearson_r"], "bias": o["bias"], "rmse_building": pc["building"]["rmse"],
                      "rmse_tree": pc["tree"]["rmse"], "n_pixels": o["n"]})
         if not a.smoke:
-            append_results(run, "val", res, method=f"phase4_{key}", deployable=True,
+            append_results(run, "val", res, method=(f"phase4_{key}" if a.name == "phase4_gsd_study" else f"{a.name}_{key}"), deployable=True,
                            extra={"study": "gsd", "gsd_m": g, "strategy": s})
     save_metrics(run, "val", results)
     table = pd.DataFrame(rows).sort_values(["gsd_m", "strategy"])

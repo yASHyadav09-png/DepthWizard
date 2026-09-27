@@ -28,7 +28,9 @@ import yaml
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from depthwizard.data.gamus import ROOT, GAMUSDataset, load_subset, worker_init_fn  # noqa: E402
+from depthwizard.data.coarsen import coarsen_cls, coarsen_gt, coarsen_rgb  # noqa: E402
+from depthwizard.data.gamus import (GAMUS_GSD_M, IMAGENET_MEAN, IMAGENET_STD, ROOT, GAMUSDataset,  # noqa: E402
+                                   load_subset, read_tile, worker_init_fn)
 from depthwizard.eval.evaluate import SplitEvaluator  # noqa: E402
 from depthwizard.losses import total_loss  # noqa: E402
 from depthwizard.models.dav2 import set_deterministic  # noqa: E402
@@ -77,7 +79,8 @@ def lr_lambda(warmup: int, total: int):
 
 
 def make_loaders(cfg, bs, seed):
-    tr = GAMUSDataset(cfg["subset"], "train", crop=cfg["data"]["crop"], train=True, jitter=cfg["data"]["jitter"])
+    tr = GAMUSDataset(cfg["subset"], "train", crop=cfg["data"]["crop"], train=True, jitter=cfg["data"]["jitter"],
+                      scale_aug=cfg["data"].get("scale_aug"))
     g = torch.Generator(); g.manual_seed(seed)
     dl = torch.utils.data.DataLoader(tr, batch_size=bs, shuffle=True, drop_last=True,
                                      num_workers=cfg["data"]["workers"], pin_memory=True,
@@ -86,9 +89,30 @@ def make_loaders(cfg, bs, seed):
     return tr, dl
 
 
+class CoarseVal(torch.utils.data.Dataset):
+    """Val tiles at a simulated coarser GSD (Phase 4 simulation, depthwizard.data.coarsen)."""
+
+    def __init__(self, subset: str, gsd: float):
+        self.ids = load_subset(subset)["val"]
+        self.size = int(round(1024 * GAMUS_GSD_M / gsd))
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, i):
+        t = read_tile("val", self.ids[i])
+        rgb = coarsen_rgb(t["rgb"], self.size)
+        nd, v = coarsen_gt(t["ndsm"], t["valid"], self.size)
+        img = (rgb.astype(np.float32) / 255.0 - IMAGENET_MEAN) / IMAGENET_STD
+        return {"image": torch.from_numpy(np.ascontiguousarray(img.transpose(2, 0, 1))),
+                "ndsm": torch.from_numpy(nd)[None], "valid": torch.from_numpy(v)[None],
+                "cls": torch.from_numpy(coarsen_cls(t["cls"], self.size)).long(), "id": self.ids[i]}
+
+
 @torch.no_grad()
-def evaluate(model, cfg, desc="val"):
-    ds = GAMUSDataset(cfg["subset"], "val", crop=None, train=False)
+def evaluate(model, cfg, desc="val", gsd: float = GAMUS_GSD_M):
+    ds = (GAMUSDataset(cfg["subset"], "val", crop=None, train=False) if gsd == GAMUS_GSD_M
+          else CoarseVal(cfg["subset"], gsd))
     dl = torch.utils.data.DataLoader(ds, batch_size=1, shuffle=False, num_workers=cfg["eval"]["workers"])
     model.eval()
     ev = SplitEvaluator()
@@ -318,7 +342,11 @@ def main():
         return
 
     # ---- full training
-    start_epoch, step, best = 0, 0, {"rmse": float("inf"), "epoch": None}
+    start_epoch, step, best = 0, 0, {"rmse": float("inf"), "select": float("inf"), "epoch": None}
+    # checkpoint selection (val only): mean val RMSE over eval.gsds (default [0.33] = plain val RMSE,
+    # as in Phase 2; Phase 6 selects on [0.33, 0.66], the simulated coarse GSD from the Phase 4 study)
+    sel_gsds = [float(g) for g in cfg["eval"].get("gsds", [GAMUS_GSD_M])]
+    assert GAMUS_GSD_M in sel_gsds
     if args.resume:
         model.load_state_dict(ck["trainable"], strict=False)
         opt.load_state_dict(ck["optimizer"]); sched.load_state_dict(ck["scheduler"])
@@ -338,8 +366,14 @@ def main():
             te = time.perf_counter()
             res, per_tile = evaluate(model, cfg, desc=f"val ep{epoch}")
             o, pc = res["overall"], res["per_class"]
+            extra_res = {g: evaluate(model, cfg, desc=f"val@{g} ep{epoch}", gsd=g)
+                         for g in sel_gsds if g != GAMUS_GSD_M}
+            rmses = [o["rmse"] if g == GAMUS_GSD_M else extra_res[g][0]["overall"]["rmse"] for g in sel_gsds]
+            select = float(np.mean(rmses))
             row = {"epoch": epoch, "step": step, "rmse": o["rmse"], "mae": o["mae"], "pearson_r": o["pearson_r"],
                    "bias": o["bias"], "rmse_building": pc["building"]["rmse"], "rmse_tree": pc["tree"]["rmse"],
+                   **{f"rmse_gsd{g:.2f}": extra_res[g][0]["overall"]["rmse"] for g in extra_res},
+                   **({"select_mean_rmse": select} if extra_res else {}),
                    "eval_min": (time.perf_counter() - te) / 60}
             new = not val_log.exists()
             with open(val_log, "a", newline="") as f:
@@ -348,10 +382,15 @@ def main():
                 w.writerow(row)
             print(f"[val] epoch {epoch}: RMSE {o['rmse']:.3f} MAE {o['mae']:.3f} r {o['pearson_r']:.3f} "
                   f"bias {o['bias']:+.3f} | bldg {pc['building']['rmse']:.3f} tree {pc['tree']['rmse']:.3f}")
-            if o["rmse"] < best["rmse"]:
-                best = {"rmse": o["rmse"], "epoch": epoch, "step": step}
+            if extra_res:
+                print("  " + " ".join(f"RMSE@{g}: {r:.3f}" for g, r in zip(sel_gsds, rmses)) + f" -> select {select:.3f}")
+            if select < best.get("select", best["rmse"]):
+                best = {"rmse": o["rmse"], "select": select, "epoch": epoch, "step": step}
                 save_metrics(run_dir, "val", res)
                 per_tile.to_csv(run_dir / "per_tile_val.csv", index=False)
+                for g, (rg, ptg) in extra_res.items():
+                    save_metrics(run_dir, f"val_gsd{g:.2f}", rg)
+                    ptg.to_csv(run_dir / f"per_tile_val_gsd{g:.2f}.csv", index=False)
                 save_ckpt(ckdir / "best.pt", model, opt, sched, epoch, step, best, cfg, bs, accum)
                 print(f"  new best -> checkpoints/best.pt")
         save_ckpt(ckdir / "last.pt", model, opt, sched, epoch, step, best, cfg, bs, accum)
@@ -362,7 +401,8 @@ def main():
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2))
     res = json.loads((run_dir / "metrics_val.json").read_text())
     append_results(run_dir, "val", res, method=cfg["name"], deployable=True,
-                   extra={"best_epoch": best["epoch"], "selected_by": "val_rmse",
+                   extra={"best_epoch": best["epoch"],
+                          "selected_by": "val_rmse" if sel_gsds == [GAMUS_GSD_M] else f"mean val_rmse @ {sel_gsds}",
                           "phase1_commit": cfg["phase1_commit"][:10]})
     print(f"done. best val RMSE {best['rmse']:.3f} at epoch {best['epoch']}  ->  {run_dir}")
 
