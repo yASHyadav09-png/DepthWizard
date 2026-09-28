@@ -36,7 +36,10 @@ class Settings:
 
     # --- Storage ---------------------------------------------------------
     OUTPUT_DIR = Path(_env("DW_OUTPUT_DIR", str(BASE_DIR / "outputs")))
-    STATIC_URL_PREFIX = "/static"
+    # "/static" locally; overridden on the HF Space (DW_STATIC_URL_PREFIX), where Gradio
+    # itself already reserves "/static/{path:path}" for its own UI assets and would
+    # otherwise shadow ours (see scripts/build_space.py).
+    STATIC_URL_PREFIX = _env("DW_STATIC_URL_PREFIX", "/static")
 
     # --- Upload limits ---------------------------------------------------
     MAX_UPLOAD_BYTES = int(_env("DW_MAX_UPLOAD_MB", "40")) * 1024 * 1024

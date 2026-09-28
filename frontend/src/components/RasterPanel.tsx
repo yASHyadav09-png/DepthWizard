@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ProcessResult } from '../types'
+import { assetUrl } from '../services/api'
 import { Panel } from './ui'
 
 type LayerKey = 'original' | 'height' | 'hillshade'
@@ -84,7 +85,10 @@ export function RasterPanel({
   const [zoom, setZoom] = useState<LayerKey | null>(null)
 
   const srcFor = (layer: (typeof LAYERS)[number]): string | null => {
-    if (result) return layer.asset(result)
+    // relative paths from the API must be resolved against the backend origin
+    // (VITE_API_BASE), not the frontend's own origin -- matters once the two are
+    // deployed separately (e.g. Vercel frontend + a Hugging Face Space backend).
+    if (result) return assetUrl(layer.asset(result))
     return layer.key === 'original' ? previewUrl : null
   }
 

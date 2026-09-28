@@ -112,7 +112,15 @@ class NDSMPredictor:
         assert all(not k.startswith(("net.neck", "net.head")) for k in missing), "decoder weights missing"
         self.model = m.to(self.device).eval()
         meta = json.loads((self.run_dir / "meta.json").read_text())
-        self.info = ModelInfo(run=self.run_dir.name, checkpoint=str(ck_path.relative_to(ROOT)),
+        try:
+            # display-only path, relative to the repo when the run lives under it (the normal
+            # case); falls back to an absolute path when it doesn't (e.g. a checkpoint fetched
+            # into an external cache dir, as on the HF Space deployment) -- never affects the
+            # loaded weights, sha256 (computed on the file bytes below) or any prediction.
+            checkpoint_str = str(ck_path.relative_to(ROOT))
+        except ValueError:
+            checkpoint_str = str(ck_path)
+        self.info = ModelInfo(run=self.run_dir.name, checkpoint=checkpoint_str,
                               sha256=sha256_file(ck_path), epoch=int(ck["epoch"]) + 1,
                               val_rmse=float(ck["best"]["rmse"]), git_commit=meta["git"]["commit"],
                               trainable_mode=cfg["trainable"]["mode"], s0=float(ck["s0"]),

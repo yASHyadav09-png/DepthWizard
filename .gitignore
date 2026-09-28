@@ -37,6 +37,7 @@ outputs/
 node_modules/
 dist/
 dist-ssr/
+space_dist/
 .vite/
 *.local
 

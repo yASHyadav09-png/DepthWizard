@@ -132,7 +132,10 @@ export function StatsPanel({ result }: { result: ProcessResult | null }) {
           ↓ nDSM .npy (m)
         </a>
         <a
-          href={assetUrl(`/static/${result.job_id}/metadata.json`)}
+          // metadata.json sits next to the other per-job assets; derive its path from one
+          // of those (which already carries the correct, possibly non-"/static", prefix --
+          // see RasterPanel.tsx) instead of hardcoding "/static".
+          href={assetUrl(result.assets.original.replace(/[^/]+$/, 'metadata.json'))}
           target="_blank"
           rel="noreferrer"
           className={btn}
